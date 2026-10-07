@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="iconTitle iconDesc" shape-rendering="geometricPrecision">
+  <title id="iconTitle">jwt-rust 图标：钥匙小卫 Kee</title>
+  <desc id="iconDesc">浅色圆角方块内是金色钥匙人 Kee，钥匙刃上的八颗齿代表八个框架适配层，胸前蓝盾代表校验与黑名单。</desc>
+  <defs>
+    <linearGradient id="keeGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FDE68A"/>
+      <stop offset=".5" stop-color="#FBBF24"/>
+      <stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+    <linearGradient id="keeShield" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#60A5FA"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 底盘：浅色圆角方块 + 描边 -->
+  <rect x="6" y="6" width="500" height="500" rx="90" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="12"/>
+
+  <!-- Kee 图形整段复用自 docs/pet.svg：移除组内 6 个 SMIL 动画节点与脉动盾轮廓 path（组外光点及其 3 个 SMIL 未复用），未重画任何路径，居中放大 -->
+  <g transform="translate(70 23.125) scale(1.5)">
+    <!-- 脚 -->
+    <ellipse cx="108" cy="275" rx="12" ry="8" fill="#1E293B"/>
+    <ellipse cx="132" cy="275" rx="12" ry="8" fill="#1E293B"/>
+
+    <!-- 右臂（挥手，置于身体之后） -->
+    <g>
+      <path d="M138 150 C154 146 168 134 172 118" fill="none" stroke="#1E293B" stroke-width="19" stroke-linecap="round"/>
+      <path d="M138 150 C154 146 168 134 172 118" fill="none" stroke="#F59E0B" stroke-width="11" stroke-linecap="round"/>
+      <circle cx="172" cy="116" r="11" fill="#FBBF24" stroke="#1E293B" stroke-width="5"/>
+    </g>
+
+    <!-- 左臂 -->
+    <path d="M98 170 C84 174 76 184 76 196" fill="none" stroke="#1E293B" stroke-width="19" stroke-linecap="round"/>
+    <path d="M98 170 C84 174 76 184 76 196" fill="none" stroke="#F59E0B" stroke-width="11" stroke-linecap="round"/>
+    <circle cx="76" cy="198" r="11" fill="#FBBF24" stroke="#1E293B" stroke-width="5"/>
+
+    <!-- 身体 = 钥匙刃，右侧八颗齿 = 八个框架适配层 -->
+    <path d="M96 110 H144 V126 h16 a5 5 0 0 1 0 10 h-16 V142 h16 a5 5 0 0 1 0 10 h-16 V158 h16 a5 5 0 0 1 0 10 h-16 V174 h16 a5 5 0 0 1 0 10 h-16 V190 h16 a5 5 0 0 1 0 10 h-16 V206 h16 a5 5 0 0 1 0 10 h-16 V222 h16 a5 5 0 0 1 0 10 h-16 V238 h16 a5 5 0 0 1 0 10 h-16 V248 a20 20 0 0 1 -20 20 H116 a20 20 0 0 1 -20 -20 Z"
+          fill="url(#keeGold)" stroke="#1E293B" stroke-width="5" stroke-linejoin="round"/>
+
+    <!-- 盾牌（校验与黑名单） -->
+    <path d="M120 154 L142 162 V182 C142 198 132 207 120 213 C108 207 98 198 98 182 V162 Z"
+          fill="url(#keeShield)" stroke="#1E293B" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M109 182 l8 8 l15 -17" fill="none" stroke="#FFFFFF" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- 头（钥匙柄） -->
+    <circle cx="120" cy="78" r="48" fill="url(#keeGold)" stroke="#1E293B" stroke-width="5"/>
+    <ellipse cx="101" cy="57" rx="16" ry="10" fill="#FFFBEB" opacity=".55" transform="rotate(-24 101 57)"/>
+
+    <!-- 表情 -->
+    <ellipse cx="102" cy="86" rx="6" ry="7.5" fill="#1F2937"/>
+    <ellipse cx="138" cy="86" rx="6" ry="7.5" fill="#1F2937"/>
+    <circle cx="104" cy="83" r="2.2" fill="#FFFFFF"/>
+    <circle cx="140" cy="83" r="2.2" fill="#FFFFFF"/>
+    <circle cx="91" cy="99" r="7" fill="#FB7185" opacity=".4"/>
+    <circle cx="149" cy="99" r="7" fill="#FB7185" opacity=".4"/>
+    <path d="M108 97 q12 14 24 0" fill="none" stroke="#1F2937" stroke-width="4.5" stroke-linecap="round"/>
+  </g>
+</svg>

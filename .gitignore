@@ -1,0 +1,34 @@
+# Ruflo local secrets and runtime data
+.env
+.env.local
+.env.*.local
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+
+# Codex local configuration
+.codex/
+# Claude Flow runtime data
+# Environment variables
+
+
+# Added by cargo
+
+/target
+
+# Local AI tooling (not part of the published project)
+.agents/
+.claude/
+.claude-flow/
+.codex/
+.mcp.json
+.swarm/
+ruvector.db
+CLAUDE.md
+AGENTS.md
+
+# Internal design/plan docs (kept local; excluded from the crate package too)
+docs/superpowers/
+
+# Library crate: lockfile is not committed
+Cargo.lock

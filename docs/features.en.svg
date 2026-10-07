@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" role="img" aria-labelledby="featTitle featDesc"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif">
+  <title id="featTitle">erikwang2013/jwt-rust Feature Design</title>
+  <desc id="featDesc">Six feature domains: token issuance, token validation, token refresh, blacklist storage, high availability, and framework integration.</desc>
+
+  <rect x="0" y="0" width="960" height="560" rx="18" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text x="40" y="52" font-size="22" font-weight="700" fill="#0F172A">Feature Design</text>
+  <text x="40" y="78" font-size="13" fill="#64748B">Six feature domains cover the full token lifecycle; plain Rust and eight frameworks share one API and config schema</text>
+
+  <!-- ① Token Issuance -->
+  <rect x="40" y="108" width="282" height="190" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <line x1="56" y1="130" x2="118" y2="130" stroke="#F59E0B" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="56" y="160" font-size="15" font-weight="700" fill="#0F172A">Token Issuance</text>
+  <text x="56" y="180" font-size="11" fill="#B45309">encode()</text>
+  <text x="56" y="212" font-size="11.5" fill="#475569">HS256 / HS384 / HS512 / RS256</text>
+  <text x="56" y="234" font-size="11.5" fill="#475569">Auto-adds iss · aud · iat · nbf · exp</text>
+  <text x="56" y="256" font-size="11.5" fill="#475569">Random 16-byte jti per token</text>
+  <text x="56" y="278" font-size="11.5" fill="#475569">Custom expiry and headers</text>
+
+  <!-- ② Token Validation -->
+  <rect x="339" y="108" width="282" height="190" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <line x1="355" y1="130" x2="417" y2="130" stroke="#2563EB" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="355" y="160" font-size="15" font-weight="700" fill="#0F172A">Token Validation</text>
+  <text x="355" y="180" font-size="11" fill="#1D4ED8">decode() · validate()</text>
+  <text x="355" y="212" font-size="11.5" fill="#475569">Signature + expiry check (incl. nbf)</text>
+  <text x="355" y="234" font-size="11.5" fill="#475569">iss / aud match; aud takes arrays</text>
+  <text x="355" y="256" font-size="11.5" fill="#475569">leeway tolerates clock skew</text>
+  <text x="355" y="278" font-size="11.5" fill="#475569">Refresh tokens denied unless opted in</text>
+
+  <!-- ③ Token Refresh -->
+  <rect x="638" y="108" width="282" height="190" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <line x1="654" y1="130" x2="716" y2="130" stroke="#7C3AED" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="654" y="160" font-size="15" font-weight="700" fill="#0F172A">Token Refresh</text>
+  <text x="654" y="180" font-size="11" fill="#6D28D9">refresh()</text>
+  <text x="654" y="212" font-size="11.5" fill="#475569">Only refresh tokens can be exchanged</text>
+  <text x="654" y="234" font-size="11.5" fill="#475569">Old jti blacklisted at once (rotation)</text>
+  <text x="654" y="256" font-size="11.5" fill="#475569">Custom TTL, defaults to refresh_expire</text>
+  <text x="654" y="278" font-size="11.5" fill="#475569">refresh is not atomic (race window)</text>
+
+  <!-- ④ Blacklist Storage -->
+  <rect x="40" y="314" width="282" height="190" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <line x1="56" y1="336" x2="118" y2="336" stroke="#0D9488" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="56" y="366" font-size="15" font-weight="700" fill="#0F172A">Blacklist Storage</text>
+  <text x="56" y="386" font-size="11" fill="#0F766E">blacklist() · is_blacklisted()</text>
+  <text x="56" y="418" font-size="11.5" fill="#475569">file / redis / database / memcached</text>
+  <text x="56" y="440" font-size="11.5" fill="#475569">Key prefix isolates apps and envs</text>
+  <text x="56" y="462" font-size="11.5" fill="#475569">Entries auto-reclaimed at exp</text>
+  <text x="56" y="484" font-size="11.5" fill="#475569">Switch drivers with one config line</text>
+
+  <!-- ⑤ High Availability -->
+  <rect x="339" y="314" width="282" height="190" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <line x1="355" y1="336" x2="417" y2="336" stroke="#E11D48" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="355" y="366" font-size="15" font-weight="700" fill="#0F172A">High Availability</text>
+  <text x="355" y="386" font-size="11" fill="#BE123C">Resilience</text>
+  <text x="355" y="418" font-size="11.5" fill="#475569">RetryTokenStorage decorator retries</text>
+  <text x="355" y="440" font-size="11.5" fill="#475569">Retry count and delay configurable</text>
+  <text x="355" y="462" font-size="11.5" fill="#475569">log facade, silent when unwired</text>
+  <text x="355" y="484" font-size="11.5" fill="#475569">Storage errors deny; fail_open allows</text>
+
+  <!-- ⑥ Framework Integration -->
+  <rect x="638" y="314" width="282" height="190" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <line x1="654" y1="336" x2="716" y2="336" stroke="#4F46E5" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="654" y="366" font-size="14" font-weight="700" fill="#0F172A">Framework Integration &amp; Plain Rust</text>
+  <text x="654" y="386" font-size="11" fill="#4338CA">Integration · Plain Rust</text>
+  <text x="654" y="418" font-size="11.5" fill="#475569">Route-level on/off + except allowlist</text>
+  <text x="654" y="440" font-size="11.5" fill="#475569">Layer / Filter / request guard</text>
+  <text x="654" y="462" font-size="11.5" fill="#475569">One cargo feature to opt in</text>
+  <text x="654" y="484" font-size="11.5" fill="#475569">Plain Rust: Guard + from_file</text>
+  <text x="920" y="550" font-size="10" fill="#94A3B8" text-anchor="end">© 2026 erik · https://erik.xyz</text>
+</svg>

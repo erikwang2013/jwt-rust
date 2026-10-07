@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="912" viewBox="0 0 960 912" role="img" aria-labelledby="archTitle archDesc"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif">
+  <title id="archTitle">erikwang2013/jwt-rust 架构设计</title>
+  <desc id="archDesc">四层架构：接入层（原生 Rust Guard 与 axum / actix-web / rocket / poem / salvo / warp / bee-rust / e-cat 八框架适配）、框架无关核心层（Jwt / JwtFactory / JwtAuth / 支撑组件）、可插拔存储层（TokenStorage trait + RetryTokenStorage 装饰器 + redis / database / file / memcached 四驱动）、底层依赖（jsonwebtoken 与 log 日志）。</desc>
+  <defs>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+      <path d="M0 0 L9 4.5 L0 9 z" fill="#94A3B8"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="960" height="912" rx="18" fill="#F8FAFC" stroke="#E2E8F0"/>
+
+  <text x="40" y="52" font-size="22" font-weight="700" fill="#0F172A">架构设计 · Architecture</text>
+  <text x="40" y="78" font-size="13" fill="#64748B">一套框架无关内核 + 九种接入方式 + 四种存储驱动，外部依赖全部构造注入</text>
+
+  <!-- ══════════ 接入层 ══════════ -->
+  <rect x="40" y="100" width="880" height="324" rx="14" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="56" y="126" font-size="13" font-weight="700" fill="#7C3AED">接入层 · Integrations（原生 Rust 与八框架，彼此互不感知）</text>
+
+  <rect x="54" y="136" width="279" height="84" rx="10" fill="#FAF5FF" stroke="#DDD6FE"/>
+  <text x="68" y="158" font-size="13" font-weight="700" fill="#6D28D9">原生 Rust</text>
+  <text x="68" y="176" font-size="10" fill="#6B7280">Guard 请求守卫</text>
+  <text x="68" y="193" font-size="10" fill="#6B7280">from_file()</text>
+  <text x="68" y="210" font-size="10" fill="#6B7280">零框架依赖</text>
+
+  <rect x="341" y="136" width="279" height="84" rx="10" fill="#FAF5FF" stroke="#DDD6FE"/>
+  <text x="355" y="158" font-size="13" font-weight="700" fill="#6D28D9">axum</text>
+  <text x="355" y="176" font-size="10" fill="#6B7280">Middleware</text>
+  <text x="355" y="193" font-size="10" fill="#6B7280">route_layer</text>
+  <text x="355" y="210" font-size="10" fill="#6B7280">cargo add</text>
+
+  <rect x="628" y="136" width="279" height="84" rx="10" fill="#FAF5FF" stroke="#DDD6FE"/>
+  <text x="642" y="158" font-size="13" font-weight="700" fill="#6D28D9">actix-web</text>
+  <text x="642" y="176" font-size="10" fill="#6B7280">Transform 中间件</text>
+  <text x="642" y="193" font-size="10" fill="#6B7280">App::wrap</text>
+  <text x="642" y="210" font-size="10" fill="#6B7280">extensions</text>
+
+  <rect x="54" y="232" width="279" height="84" rx="10" fill="#FAF5FF" stroke="#DDD6FE"/>
+  <text x="68" y="254" font-size="13" font-weight="700" fill="#6D28D9">rocket</text>
+  <text x="68" y="272" font-size="10" fill="#6B7280">JwtGuard 请求守卫</text>
+  <text x="68" y="289" font-size="10" fill="#6B7280">路由挂载</text>
+  <text x="68" y="306" font-size="10" fill="#6B7280">无命令</text>
+
+  <rect x="341" y="232" width="279" height="84" rx="10" fill="#FAF5FF" stroke="#DDD6FE"/>
+  <text x="355" y="254" font-size="13" font-weight="700" fill="#6D28D9">poem</text>
+  <text x="355" y="272" font-size="10" fill="#6B7280">JwtMiddleware</text>
+  <text x="355" y="289" font-size="10" fill="#6B7280">Endpoint::with</text>
+  <text x="355" y="306" font-size="10" fill="#6B7280">extensions</text>
+
+  <rect x="628" y="232" width="279" height="84" rx="10" fill="#FAF5FF" stroke="#DDD6FE"/>
+  <text x="642" y="254" font-size="13" font-weight="700" fill="#6D28D9">salvo</text>
+  <text x="642" y="272" font-size="10" fill="#6B7280">JwtHoop</text>
+  <text x="642" y="289" font-size="10" fill="#6B7280">Router::hoop</text>
+  <text x="642" y="306" font-size="10" fill="#6B7280">depot</text>
+
+  <rect x="54" y="328" width="279" height="84" rx="10" fill="#FAF5FF" stroke="#DDD6FE"/>
+  <text x="68" y="350" font-size="13" font-weight="700" fill="#6D28D9">warp</text>
+  <text x="68" y="368" font-size="10" fill="#6B7280">with_jwt 过滤器</text>
+  <text x="68" y="385" font-size="10" fill="#6B7280">filter 组合</text>
+  <text x="68" y="402" font-size="10" fill="#6B7280">JwtRejection</text>
+
+  <rect x="341" y="328" width="279" height="84" rx="10" fill="#FAF5FF" stroke="#DDD6FE"/>
+  <text x="355" y="350" font-size="13" font-weight="700" fill="#6D28D9">bee-rust</text>
+  <text x="355" y="368" font-size="10" fill="#6B7280">JwtFilter</text>
+  <text x="355" y="385" font-size="10" fill="#6B7280">bee_router::Filter</text>
+  <text x="355" y="402" font-size="10" fill="#6B7280">extensions</text>
+
+  <rect x="628" y="328" width="279" height="84" rx="10" fill="#FAF5FF" stroke="#DDD6FE"/>
+  <text x="642" y="350" font-size="13" font-weight="700" fill="#6D28D9">e-cat</text>
+  <text x="642" y="368" font-size="10" fill="#6B7280">JwtLayer（tower）</text>
+  <text x="642" y="385" font-size="10" fill="#6B7280">JwtInterceptor</text>
+  <text x="642" y="402" font-size="10" fill="#6B7280">extensions · metadata</text>
+
+  <path d="M194 426 V448" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#ar)"/>
+  <path d="M481 426 V448" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#ar)"/>
+  <path d="M768 426 V448" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- ══════════ 核心层 ══════════ -->
+  <rect x="40" y="454" width="880" height="176" rx="14" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="56" y="478" font-size="13" font-weight="700" fill="#2563EB">核心层 · Core（零框架依赖，仅依赖 jsonwebtoken 与 log）</text>
+
+  <rect x="56" y="492" width="207" height="122" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="70" y="520" font-size="14" font-weight="700" fill="#1D4ED8">Jwt</text>
+  <text x="70" y="542" font-size="11" fill="#475569">encode 签发 · decode 校验</text>
+  <text x="70" y="560" font-size="11" fill="#475569">refresh 刷新 · blacklist 拉黑</text>
+  <text x="70" y="578" font-size="11" fill="#475569">iss / aud / leeway 校验</text>
+  <text x="70" y="596" font-size="11" fill="#475569">validate · cleanup 清理</text>
+
+  <rect x="275" y="492" width="207" height="122" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="289" y="520" font-size="14" font-weight="700" fill="#1D4ED8">JwtFactory</text>
+  <text x="289" y="542" font-size="11" fill="#475569">from_config() 入口</text>
+  <text x="289" y="560" font-size="11" fill="#475569">from_file · from_env</text>
+  <text x="289" y="578" font-size="11" fill="#475569">按 storage.type 选驱动</text>
+  <text x="289" y="596" font-size="11" fill="#475569">装配 RetryTokenStorage</text>
+
+  <rect x="494" y="492" width="207" height="122" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="508" y="520" font-size="14" font-weight="700" fill="#1D4ED8">JwtAuth</text>
+  <text x="508" y="542" font-size="11" fill="#475569">from_config 一次装配</text>
+  <text x="508" y="560" font-size="11" fill="#475569">authenticate · except 名单</text>
+  <text x="508" y="578" font-size="11" fill="#475569">bearer_token 自动提取</text>
+  <text x="508" y="596" font-size="11" fill="#475569">八框架一致的使用体验</text>
+
+  <rect x="713" y="492" width="207" height="122" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="727" y="520" font-size="14" font-weight="700" fill="#1D4ED8">支撑组件 Support</text>
+  <text x="727" y="542" font-size="11" fill="#475569">JwtConfig 配置容器</text>
+  <text x="727" y="560" font-size="11" fill="#475569">JwtError 异常层级</text>
+  <text x="727" y="578" font-size="11" fill="#475569">ExceptList 白名单匹配</text>
+  <text x="727" y="596" font-size="11" fill="#475569">TokenStorage trait 抽象</text>
+
+  <path d="M300 632 V656" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#ar)"/>
+  <path d="M660 632 V656" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- ══════════ 存储层 ══════════ -->
+  <rect x="40" y="662" width="880" height="150" rx="14" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="56" y="688" font-size="13" font-weight="700" fill="#0D9488">存储层 · Storage（黑名单驱动，配置一行切换）</text>
+
+  <rect x="56" y="702" width="170" height="94" rx="10" fill="#F0FDFA" stroke="#99F6E4"/>
+  <text x="68" y="724" font-size="11.5" font-weight="700" fill="#0F766E">TokenStorage</text>
+  <text x="68" y="744" font-size="11" fill="#475569">RetryTokenStorage</text>
+  <text x="68" y="764" font-size="11" fill="#475569">装饰器 · 失败自动重试</text>
+  <text x="68" y="784" font-size="11" fill="#475569">fail_open 故障放行/拒绝</text>
+
+  <path d="M234 749 H266" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <rect x="272" y="702" width="153" height="94" rx="10" fill="#F0FDFA" stroke="#99F6E4"/>
+  <text x="286" y="732" font-size="13" font-weight="700" fill="#0F766E">Redis</text>
+  <text x="286" y="758" font-size="11" fill="#475569">分布式部署首选</text>
+  <text x="286" y="778" font-size="11" fill="#475569">连接注入 · DB 可配</text>
+
+  <rect x="437" y="702" width="153" height="94" rx="10" fill="#F0FDFA" stroke="#99F6E4"/>
+  <text x="451" y="732" font-size="13" font-weight="700" fill="#0F766E">Database</text>
+  <text x="451" y="758" font-size="11" fill="#475569">SQLite 持久化</text>
+  <text x="451" y="778" font-size="11" fill="#475569">路径可配 · 表名可配</text>
+
+  <rect x="602" y="702" width="153" height="94" rx="10" fill="#F0FDFA" stroke="#99F6E4"/>
+  <text x="616" y="732" font-size="13" font-weight="700" fill="#0F766E">File</text>
+  <text x="616" y="758" font-size="11" fill="#475569">单机部署 · 低并发</text>
+  <text x="616" y="778" font-size="11" fill="#475569">路径可配 · 概率 GC</text>
+
+  <rect x="767" y="702" width="153" height="94" rx="10" fill="#F0FDFA" stroke="#99F6E4"/>
+  <text x="781" y="732" font-size="13" font-weight="700" fill="#0F766E">Memcached</text>
+  <text x="781" y="758" font-size="11" fill="#475569">高吞吐 · 自动过期</text>
+  <text x="781" y="778" font-size="11" fill="#475569">服务器列表可配</text>
+
+  <!-- ══════════ 底层依赖 ══════════ -->
+  <text x="40" y="842" font-size="12" font-weight="700" fill="#64748B">底层依赖 · Dependencies</text>
+  <rect x="40" y="854" width="430" height="42" rx="10" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="56" y="880" font-size="11.5" fill="#475569">jsonwebtoken ^11.1 —— JWT 编解码引擎</text>
+  <rect x="490" y="854" width="430" height="42" rx="10" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="506" y="880" font-size="11.5" fill="#475569">log —— 日志门面，未接入时零成本静默</text>
+  <text x="920" y="909" font-size="10" fill="#94A3B8" text-anchor="end">© 2026 erik · https://erik.xyz</text>
+</svg>

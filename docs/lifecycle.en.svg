@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="730" viewBox="0 0 960 730" role="img" aria-labelledby="lifeTitle lifeDesc"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif">
+  <title id="lifeTitle">erikwang2013/jwt-rust Token Lifecycle</title>
+  <desc id="lifeDesc">Seven stages from issuance, delivery, validation, allow / deny, refresh, blacklist to expiry cleanup, plus the state flow Active → In Use → Refreshed / Blacklisted → Expired → Cleaned.</desc>
+  <defs>
+    <marker id="lar" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+      <path d="M0 0 L9 4.5 L0 9 z" fill="#94A3B8"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="960" height="730" rx="18" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text x="40" y="52" font-size="22" font-weight="700" fill="#0F172A">Token Lifecycle</text>
+  <text x="40" y="78" font-size="13" fill="#64748B">Seven stages from issuance to destruction: middleware handles steps 3 and 4 automatically, the rest are called by app code</text>
+
+  <!-- Timeline spine -->
+  <line x1="68" y1="136" x2="68" y2="580" stroke="#CBD5E1" stroke-width="2"/>
+
+  <!-- ① Issue -->
+  <rect x="40" y="104" width="880" height="64" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <circle cx="68" cy="136" r="15" fill="#F59E0B"/>
+  <text x="68" y="141" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+  <text x="104" y="130" font-size="14" font-weight="700" fill="#0F172A">Issue <tspan font-size="11" font-weight="400" fill="#B45309">encode()</tspan></text>
+  <text x="104" y="154" font-size="11.5" fill="#475569">After credentials are verified; auto-adds iss / aud / iat / nbf / exp / jti, default TTL 3600s, refresh 7200s</text>
+
+  <!-- ② Deliver -->
+  <rect x="40" y="178" width="880" height="64" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <circle cx="68" cy="210" r="15" fill="#F59E0B"/>
+  <text x="68" y="215" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+  <text x="104" y="204" font-size="14" font-weight="700" fill="#0F172A">Deliver <tspan font-size="11" font-weight="400" fill="#B45309">Response</tspan></text>
+  <text x="104" y="228" font-size="11.5" fill="#475569">Token returned to the client; the client sends it as Authorization: Bearer &lt;token&gt; on each request</text>
+
+  <!-- ③ Validate -->
+  <rect x="40" y="252" width="880" height="64" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <circle cx="68" cy="284" r="15" fill="#2563EB"/>
+  <text x="68" y="289" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+  <text x="104" y="278" font-size="14" font-weight="700" fill="#0F172A">Validate <tspan font-size="11" font-weight="400" fill="#1D4ED8">decode() / middleware</tspan></text>
+  <text x="104" y="302" font-size="11.5" fill="#475569">Verify signature → check exp / nbf (leeway) → match iss / aud → reject refresh tokens → jti blacklist lookup (fail-closed)</text>
+
+  <!-- ④ Allow / Deny -->
+  <rect x="40" y="326" width="880" height="64" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <circle cx="68" cy="358" r="15" fill="#2563EB"/>
+  <text x="68" y="363" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+  <text x="104" y="352" font-size="14" font-weight="700" fill="#0F172A">Allow / Deny <tspan font-size="11" font-weight="400" fill="#1D4ED8">Middleware</tspan></text>
+  <text x="104" y="376" font-size="11.5" fill="#475569">On success inject payload (extensions / depot) and continue; on failure return 401 JSON</text>
+
+  <!-- ⑤ Refresh -->
+  <rect x="40" y="400" width="880" height="64" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <circle cx="68" cy="432" r="15" fill="#7C3AED"/>
+  <text x="68" y="437" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+  <text x="104" y="426" font-size="14" font-weight="700" fill="#0F172A">Refresh <tspan font-size="11" font-weight="400" fill="#6D28D9">refresh()</tspan></text>
+  <text x="104" y="450" font-size="11.5" fill="#475569">Exchange a refresh token for a new one; the old jti is blacklisted at once (rotation), new TTL defaults to refresh_expire</text>
+
+  <!-- ⑥ Blacklist -->
+  <rect x="40" y="474" width="880" height="64" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <circle cx="68" cy="506" r="15" fill="#E11D48"/>
+  <text x="68" y="511" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+  <text x="104" y="500" font-size="14" font-weight="700" fill="#0F172A">Blacklist <tspan font-size="11" font-weight="400" fill="#BE123C">blacklist() · logout / password change / risk control</tspan></text>
+  <text x="104" y="524" font-size="11.5" fill="#475569">Revokes tokens that have not expired yet; expired or already-blacklisted jti still gets written back, keeping it idempotent</text>
+
+  <!-- ⑦ Expire & Cleanup -->
+  <rect x="40" y="548" width="880" height="64" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <circle cx="68" cy="580" r="15" fill="#0D9488"/>
+  <text x="68" y="585" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">7</text>
+  <text x="104" y="574" font-size="14" font-weight="700" fill="#0F172A">Expire &amp; Cleanup <tspan font-size="11" font-weight="400" fill="#0F766E">cleanup()</tspan></text>
+  <text x="104" y="598" font-size="11.5" fill="#475569">Tokens expire naturally; blacklist entries are reclaimed at exp — scheduled job, probabilistic GC, or background task</text>
+
+  <!-- State flow -->
+  <rect x="40" y="636" width="880" height="74" rx="14" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="56" y="662" font-size="12" font-weight="700" fill="#64748B">State Machine</text>
+
+  <rect x="56" y="674" width="140" height="32" rx="8" fill="#F0FDFA" stroke="#5EEAD4"/>
+  <text x="126" y="695" font-size="11.5" font-weight="600" fill="#0F766E" text-anchor="middle">Active</text>
+  <path d="M200 690 H222" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#lar)"/>
+
+  <rect x="230" y="674" width="140" height="32" rx="8" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="300" y="695" font-size="11.5" font-weight="600" fill="#1D4ED8" text-anchor="middle">In Use</text>
+  <path d="M374 690 H396" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#lar)"/>
+
+  <rect x="404" y="674" width="140" height="32" rx="8" fill="#FAF5FF" stroke="#DDD6FE"/>
+  <text x="474" y="695" font-size="11.5" font-weight="600" fill="#6D28D9" text-anchor="middle">Refreshed / Blacklisted</text>
+  <path d="M548 690 H570" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#lar)"/>
+
+  <rect x="578" y="674" width="140" height="32" rx="8" fill="#FFF1F2" stroke="#FECDD3"/>
+  <text x="648" y="695" font-size="11.5" font-weight="600" fill="#BE123C" text-anchor="middle">Expired</text>
+  <path d="M722 690 H744" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#lar)"/>
+
+  <rect x="752" y="674" width="140" height="32" rx="8" fill="#F1F5F9" stroke="#CBD5E1"/>
+  <text x="822" y="695" font-size="11.5" font-weight="600" fill="#475569" text-anchor="middle">Cleaned</text>
+  <text x="920" y="722" font-size="10" fill="#94A3B8" text-anchor="end">© 2026 erik · https://erik.xyz</text>
+</svg>
