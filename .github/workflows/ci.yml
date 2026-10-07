@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      # jsonwebtoken is pinned to the aws_lc_rs backend; aws-lc-sys builds C
+      # sources through cmake (gcc is already on the runner).
+      - name: Install cmake
+        run: sudo apt-get update && sudo apt-get install -y cmake
+
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        run: cargo clippy --all-features --all-targets -- -D warnings
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit@0.22.2
+
+      # Reads .cargo/audit.toml; RUSTSEC-2026-0258 (h2 0.3 via actix/rocket)
+      # is ignored there with the rationale.
+      - name: cargo audit
+        run: cargo audit
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    services:
+      # The redis / memcached storage tests skip themselves when the service is
+      # unreachable, so without these they would silently never run.
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      memcached:
+        image: memcached:1.6-alpine
+        ports:
+          - 11211:11211
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cmake
+        run: sudo apt-get update && sudo apt-get install -y cmake
+
+      - name: cargo test
+        run: cargo test --all-features
+
+  msrv:
+    name: msrv (1.88)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Exact MSRV release: rust-version = "1.88" means 1.88.0 compiles.
+      - uses: dtolnay/rust-toolchain@1.88.0
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cmake
+        run: sudo apt-get update && sudo apt-get install -y cmake
+
+      # salvo 1.0.1 requires rustc >= 1.94, so it is excluded from the MSRV
+      # feature set; everything else must build on the declared 1.88.
+      - name: cargo check (MSRV)
+        run: >-
+          cargo check --no-default-features
+          --features "redis,database,memcached,axum,actix,rocket,poem,warp,bee-rust,ecat,ecat-grpc"

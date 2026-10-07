@@ -1,6 +1,15 @@
 # erikwang2013/jwt-rust
 
 <div align="center">
+
+[![CI](https://github.com/erikwang2013/jwt-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/erikwang2013/jwt-rust/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/jwt-rust.svg)](https://crates.io/crates/jwt-rust)
+[![docs.rs](https://docs.rs/jwt-rust/badge.svg)](https://docs.rs/jwt-rust)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
+</div>
+
+<div align="center">
   <img src="./docs/social-preview.png" alt="jwt-rust — Rust 多框架 JWT 认证插件" width="960" />
 </div>
 
@@ -18,7 +27,7 @@
 
 `erikwang2013/jwt-rust` 是一个 Rust 多框架 JWT 认证插件，核心基于 `jsonwebtoken` 封装。
 
-文档以中文为主；架构 / 功能 / 生命周期三图提供英文版（各图下方链接）。
+文档提供中英双语：本 README（中文）与 [README.en.md](./README.en.md)（English）；架构 / 功能 / 生命周期三图各有英文版（各图下方链接）。
 
 ### 定位
 
@@ -733,6 +742,19 @@ except = ["api/login|api/logout"]        # 正确：两个分支都能命中
 
 例外：**file 驱动的读路径**在文件读错误 / 条目损坏时静默视为「未拉黑」（与 PHP 版 `@file_get_contents` 语义对齐），fail-closed 在那里不生效；驱动会记 warn 日志便于排障。
 
+### 存储驱动是同步 IO（async 运行时须知）
+
+四种存储驱动（file / redis / database / memcached）全部是**同步阻塞 IO**，`TokenStorage` trait 的方法均为同步签名（与 PHP 版一致）。在 axum / actix-web 等 async 运行时中，`decode()` 里的黑名单查询是**每请求同步调用**：每个带 `jti` 的令牌校验都会占用一个 worker 线程做一次存储查询（无 `jti` 的令牌跳过该查询）。存储出错进入 `RetryTokenStorage` 重试时，等待用 `std::thread::sleep` 实现，最坏阻塞 `retry_delay × (retry_attempts − 1)`（默认 `retry_delay` 100ms、`retry_attempts` 3，即 2 次等待约 200ms）；后端自身的连接 / 锁超时还会叠加（如 memcached 建连超时 1 秒）。
+
+对多数部署这不构成问题——redis / memcached 查询是亚毫秒级的，file / database（SQLite）在低并发下同样足够。高并发或存储延迟较高时可以：
+
+- 优先选用 redis / memcached 等低延迟后端；file / database 更适合单机低并发场景
+- 调大 tokio 的 worker 线程数（`worker_threads`），用更多线程换取并发余量
+- 调低 `JWT_ADVANCED_RETRY_DELAY` / `JWT_ADVANCED_RETRY_ATTEMPTS`，缩短故障时单请求的阻塞时间
+- 打开 `storage.fail_open`（见上）：重试仍会等待，但耗尽后放行而非 401，避免存储故障扩散成全站拒绝
+
+彻底的方案是把存储调用移出 worker 线程（如 `spawn_blocking` 包装或异步驱动），当前版本尚未实现，列入后续版本考虑。
+
 ### 刷新令牌的有效期
 
 `refresh()` 不传过期时间时使用配置的 `refresh_expire`（默认 7200 秒），与 `encode(json!({"token_type": "refresh"}), None)` 保持一致；显式传入秒数则以传入值为准。
@@ -819,3 +841,5 @@ cargo run --example mascot
 ## 开源协议
 
 MIT © 2026 [erik](https://erik.xyz)
+
+变更记录：[CHANGELOG.md](./CHANGELOG.md)

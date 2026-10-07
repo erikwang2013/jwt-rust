@@ -1,0 +1,5 @@
+[advisories]
+# h2 0.3.27 (RUSTSEC-2026-0258, unbounded empty DATA frames) reaches us only
+# transitively via actix-web and rocket (h2 0.3 is not yet upgraded upstream);
+# patching would break their h2 0.3 API. Accepted until the upstream upgrade.
+ignore = ["RUSTSEC-2026-0258"]

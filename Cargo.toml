@@ -1,6 +1,6 @@
 [package]
 name = "jwt-rust"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2024"
 rust-version = "1.88"
 description = "A framework-agnostic JWT plugin for plain Rust and axum, actix-web, rocket, poem, salvo, warp, bee-rust, e-cat: one core, a request guard or eight native adapters, pluggable blacklist storage (redis / database / file / memcached)."
@@ -12,6 +12,9 @@ repository = "https://github.com/erikwang2013/jwt-rust"
 keywords = ["jwt", "authentication", "axum", "actix-web", "bee-rust"]
 categories = ["authentication", "web-programming"]
 exclude = ["/.agents", "/.claude", "/.claude-flow", "/.codex", "/.swarm", "/ruvector.db", "/docs/superpowers", "/CLAUDE.md", "/AGENTS.md"]
+
+[package.metadata.docs.rs]
+all-features = true
 
 [dependencies]
 actix-web = { version = "4.15.0", optional = true }
