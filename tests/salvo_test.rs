@@ -99,6 +99,24 @@ async fn unmatched_path_stays_404_with_router_hoop() {
 }
 
 #[tokio::test]
+async fn blacklisted_token_is_401_with_message() {
+    let (service, a) = service();
+    // 适配层黑名单存储接线 e2e：先拉黑，再走 hoop → 401 具体文案
+    let token = a
+        .jwt()
+        .encode(&serde_json::json!({"user_id": 7}), None)
+        .unwrap();
+    assert!(a.jwt().blacklist(&token).unwrap());
+    let mut resp = TestClient::get("http://127.0.0.1:5800/api/me")
+        .add_header("Authorization", format!("Bearer {token}"), true)
+        .send(&service)
+        .await;
+    assert_eq!(resp.status_code, Some(StatusCode::UNAUTHORIZED));
+    let v: serde_json::Value = resp.take_json().await.unwrap();
+    assert_eq!(v["msg"], "Token has been blacklisted");
+}
+
+#[tokio::test]
 async fn expired_token_is_401_with_message() {
     let (service, _) = service();
     let n = std::time::SystemTime::now()

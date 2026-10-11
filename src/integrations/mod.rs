@@ -48,6 +48,7 @@ impl JwtAuth {
         })
     }
 
+    #[must_use]
     pub fn matches_except(&self, path: &str) -> bool {
         self.except.matches(path)
     }

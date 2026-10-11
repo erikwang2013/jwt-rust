@@ -64,7 +64,7 @@ fn encode_writes_default_claims_and_overrides_user_values() {
     assert_eq!(payload["user_id"], 1);
     assert_eq!(payload["iss"], "test-iss");
     assert_eq!(payload["aud"], "test-aud");
-    assert_ne!(payload["exp"], 1); // 默认声明覆盖用户同名值（PHP array_merge 后数组覆盖语义）
+    assert_ne!(payload["exp"], 1); // 默认声明覆盖用户同名值
     assert_ne!(payload["jti"], "usermade");
     assert_eq!(payload["jti"].as_str().unwrap().len(), 32); // 16 随机字节 hex
     assert!(payload["iat"].is_number() && payload["nbf"].is_number());
@@ -171,7 +171,7 @@ fn non_string_jti_is_rejected() {
 }
 
 #[test]
-fn null_jti_is_accepted_like_php_isset() {
+fn null_jti_is_accepted_as_missing() {
     let j = jwt(cfg());
     let n = now();
     let t = jsonwebtoken::encode(
@@ -180,7 +180,7 @@ fn null_jti_is_accepted_like_php_isset() {
         &EncodingKey::from_secret(SECRET.as_bytes()),
     )
     .unwrap();
-    assert!(j.decode(&t).is_ok()); // PHP isset($payload['jti'])：null 等同缺失，跳过黑名单检查
+    assert!(j.decode(&t).is_ok()); // null 等同缺失，跳过黑名单检查
 }
 
 #[test]
@@ -343,11 +343,11 @@ fn blacklist_expired_token_takes_unvalidated_path() {
             .with_gc_probability(0.0),
     );
     let j = Jwt::new(cfg(), storage).unwrap();
-    // 过期令牌须带 jti 才有可记录对象（同 PHP：无 jti 时 blacklist 返 false）
+    // 过期令牌须带 jti 才有可记录对象（无 jti 时 blacklist 返回 false）
     let past = j
         .encode_with_exp_for_test(&json!({"user_id": 1, "jti": "expired-jti"}), now() - 5)
         .unwrap();
-    // Expired → 无验证补写路径；FileTokenStorage 对已过期条目跳过落盘（同 PHP）但返回 true
+    // Expired → 无验证补写路径；FileTokenStorage 对已过期条目跳过落盘但返回 true
     assert!(j.blacklist(&past).unwrap());
     // 目录须为空：jti 非 hex 时文件名是 hex 编码，故按文件数断言而非按 "expired-jti.json" 猜名
     let written: Vec<_> = std::fs::read_dir(&dir)
@@ -356,7 +356,7 @@ fn blacklist_expired_token_takes_unvalidated_path() {
         .collect();
     assert!(
         written.is_empty(),
-        "file 驱动对过期条目不落盘（同 PHP），实际: {written:?}"
+        "file 驱动对过期条目不落盘，实际: {written:?}"
     );
 }
 
@@ -411,7 +411,7 @@ fn payload_without_validation_strips_non_string_jti() {
         j.payload_without_validation("a.b.c.d"),
         Err(JwtError::Invalid(_))
     ));
-    // 非对象 body（合法 JSON 标量）→ 空对象（不 panic，同 PHP json_decode 非数组返 []）
+    // 非对象 body（合法 JSON 标量）→ 空对象（不 panic，返回空对象）
     let nonobj = format!(
         "{}.{}.{}",
         base64url(br#"{"alg":"HS256"}"#),

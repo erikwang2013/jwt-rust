@@ -87,6 +87,31 @@ async fn layer_flow_like_ecat_middleware() {
 }
 
 #[tokio::test]
+async fn blacklisted_token_is_401_with_message() {
+    let a = Arc::new(auth());
+    let app = Router::new()
+        .route("/me", get(|| async { "ok" }))
+        .layer(JwtLayer::new(a.clone()));
+    // 适配层黑名单存储接线 e2e：先拉黑，再走 layer → 401 具体文案
+    let token = a.jwt().encode(&json!({"user_id": 7}), None).unwrap();
+    assert!(a.jwt().blacklist(&token).unwrap());
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/me")
+                .header("Authorization", format!("Bearer {token}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    let body = axum::body::to_bytes(resp.into_body(), 4096).await.unwrap();
+    let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(v["msg"], "Token has been blacklisted");
+}
+
+#[tokio::test]
 async fn expired_token_is_401_with_message() {
     let a = Arc::new(auth());
     let app = Router::new()

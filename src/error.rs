@@ -1,27 +1,34 @@
 // Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz
 // jwt-rust - JWT authentication for Rust web frameworks
-//! Error hierarchy mirroring the PHP JWTException (codes 1-6 preserved).
+//! Stable error hierarchy with numeric codes 1-6 (public API).
 
 use thiserror::Error;
 
 #[derive(Debug, Error, Clone, PartialEq)]
 pub enum JwtError {
+    /// 令牌已过期（错误码 1）。
     #[error("Token has expired")]
     Expired,
+    /// 令牌无效：签名 / 结构 / issuer / audience / 刷新令牌当访问令牌用等（错误码 2）。
     #[error("{0}")]
     Invalid(String),
+    /// 令牌已进黑名单（错误码 3）。
     #[error("Token has been blacklisted")]
     Blacklisted,
+    /// 黑名单存储层错误（错误码 4）。
     #[error("Storage error: {0}")]
     Storage(String),
+    /// 配置错误，装配期报出（错误码 5）。
     #[error("Configuration error: {0}")]
     Config(String),
+    /// 网络错误（错误码 6）。
     #[error("Network error: {0}")]
     Network(String),
 }
 
 impl JwtError {
-    /// 与 PHP JWTException 常量一一对应
+    /// 稳定错误码（1-6），对外可按码分支
+    #[must_use]
     pub fn code(&self) -> i32 {
         match self {
             Self::Expired => 1,
@@ -33,6 +40,7 @@ impl JwtError {
         }
     }
 
+    #[must_use]
     pub fn is_auth_failure(&self) -> bool {
         matches!(self, Self::Expired | Self::Invalid(_) | Self::Blacklisted)
     }
@@ -46,15 +54,15 @@ impl JwtError {
         }
     }
 
-    // PHP 工厂方法对应
+    // 构造函数（与变体一一对应）
     /// Construct an auth-failure error.
     ///
     /// `msg` is surfaced verbatim to end users via [`JwtError::user_message`]
     /// (it becomes the `msg` field of the unified 401 body). Pass audited,
     /// human-reviewed text only: never internal/IO error strings; engine
     /// errors that merely describe why the token is invalid (e.g.
-    /// jsonwebtoken's `InvalidSignature`) may pass through, mirroring the
-    /// PHP decode path. Must be non-empty.
+    /// jsonwebtoken's `InvalidSignature`) may pass through. Must be
+    /// non-empty.
     pub fn invalid(msg: impl Into<String>) -> Self {
         Self::Invalid(msg.into())
     }
@@ -74,7 +82,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn codes_match_php() {
+    fn codes_are_stable() {
         assert_eq!(JwtError::Expired.code(), 1);
         assert_eq!(JwtError::Invalid("x".into()).code(), 2);
         assert_eq!(JwtError::Blacklisted.code(), 3);

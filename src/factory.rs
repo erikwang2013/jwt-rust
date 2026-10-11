@@ -1,5 +1,5 @@
 // Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz
-//! Factory assembling the JWT core with the configured storage (mirrors the PHP JWTFactory).
+//! Factory assembling the JWT core with the configured storage.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -9,7 +9,7 @@ use crate::error::JwtError;
 use crate::jwt::Jwt;
 use crate::storage::{FileTokenStorage, RetryTokenStorage, TokenStorage};
 
-/// 按配置组装内核与存储（对应 PHP JWTFactory）
+/// 按配置组装内核与存储
 pub struct JwtFactory;
 
 impl JwtFactory {
@@ -29,7 +29,7 @@ impl JwtFactory {
         Self::from_config(JwtConfig::from_env())
     }
 
-    /// 从 TOML 配置文件组装内核（对应 PHP JWTFactory::createFromFile）
+    /// 从 TOML 配置文件组装内核
     pub fn from_file(path: &Path) -> Result<Jwt, JwtError> {
         Self::from_config(JwtConfig::from_toml_file(path)?)
     }
@@ -47,7 +47,7 @@ impl JwtFactory {
                         s.r#type
                     );
                 }
-                Self::file(s) // 未知类型回落 file（同 PHP 的 default 分支）
+                Self::file(s) // 未知类型回落 file（宽松：拼写错误不至于启动失败，但会告警）
             }
         }
     }
@@ -127,7 +127,7 @@ mod tests {
         let j = JwtFactory::from_config(cfg("file")).unwrap();
         assert_eq!(j.algorithm(), "HS256");
 
-        // 未知类型回落 file：只有 file 驱动会创建目录，据此证明分派落点（同 PHP default 分支）
+        // 未知类型回落 file：只有 file 驱动会创建目录，据此证明分派落点
         let dir =
             std::env::temp_dir().join(format!("jwt_rust_factory_unknown_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
@@ -143,7 +143,7 @@ mod tests {
         let dir =
             std::env::temp_dir().join(format!("jwt_rust_factory_retry_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
+        // 不预创建：交给驱动按 0700 创建（预创建的目录会带上进程 umask，可能触发权限校验）
         let path = dir.to_string_lossy().into_owned();
 
         let mut c = cfg("file");

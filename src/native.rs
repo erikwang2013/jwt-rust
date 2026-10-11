@@ -1,5 +1,5 @@
 // Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz
-//! Native (framework-less) request guard, mirroring the PHP Native\Guard.
+//! Native (framework-less) request guard.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -11,7 +11,7 @@ use crate::error::JwtError;
 use crate::factory::JwtFactory;
 use crate::jwt::Jwt;
 
-/// 原生 Rust（无框架）请求守卫（对应 PHP Native\Guard）。
+/// 原生 Rust（无框架）请求守卫。
 /// Rust 无全局请求对象：401 的"输出并结束"由调用方用 `unauthorized_body` 完成。
 pub struct Guard {
     jwt: Arc<Jwt>,
@@ -30,7 +30,7 @@ impl Guard {
         Ok(Self::new(JwtFactory::from_env()?))
     }
 
-    /// 从 TOML 配置文件组装守卫（对应 PHP Native\Guard::fromFile）
+    /// 从 TOML 配置文件组装守卫
     pub fn from_file(path: &Path) -> Result<Self, JwtError> {
         Ok(Self::new(JwtFactory::from_file(path)?))
     }

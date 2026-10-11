@@ -10,10 +10,15 @@ use crate::error::JwtError;
 
 /// SQLite 黑名单（v1 的 database 驱动；MySQL/PG 实现 TokenStorage trait 即可）。
 /// 表：jti TEXT PRIMARY KEY, expire_time INTEGER NOT NULL, created_at INTEGER；写入为幂等 upsert
+#[derive(Debug)]
 pub struct DatabaseTokenStorage {
-    // ponytail: 单连接 + Mutex（rusqlite 默认 busy_timeout 5s，优于 PHP PDO 的 0）；高并发换连接池；多进程共享同一文件需 WAL（要求 FS 支持共享内存）
+    // ponytail: 单连接 + Mutex（rusqlite 默认 busy_timeout 5s：写锁竞争时等待而非立即报错）；高并发换连接池；多进程共享同一文件需 WAL（要求 FS 支持共享内存）
     conn: Mutex<Connection>,
     table: String,
+    // SQL 预拼：热路径每请求免一次 format!；配合 prepare_cached 复用编译计划
+    insert_sql: String,
+    select_sql: String,
+    delete_sql: String,
 }
 
 impl DatabaseTokenStorage {
@@ -36,6 +41,12 @@ impl DatabaseTokenStorage {
         let s = Self {
             conn: Mutex::new(conn),
             table: table_name.to_string(),
+            insert_sql: format!(
+                "INSERT INTO {table_name} (jti, expire_time, created_at) VALUES (?1, ?2, ?3)
+                 ON CONFLICT(jti) DO UPDATE SET expire_time = excluded.expire_time"
+            ),
+            select_sql: format!("SELECT 1 FROM {table_name} WHERE jti = ?1 AND expire_time > ?2"),
+            delete_sql: format!("DELETE FROM {table_name} WHERE expire_time <= ?1"),
         };
         if auto_create {
             s.exec(&format!(
@@ -78,11 +89,7 @@ impl TokenStorage for DatabaseTokenStorage {
     fn blacklist(&self, jti: &str, expire_time: i64) -> Result<bool, JwtError> {
         self.conn()
             .execute(
-                &format!(
-                    "INSERT INTO {} (jti, expire_time, created_at) VALUES (?1, ?2, ?3)
-                     ON CONFLICT(jti) DO UPDATE SET expire_time = excluded.expire_time",
-                    self.table
-                ),
+                &self.insert_sql,
                 rusqlite::params![jti, expire_time, crate::jwt::now()],
             )
             .map_err(db_err)?;
@@ -91,12 +98,8 @@ impl TokenStorage for DatabaseTokenStorage {
 
     fn is_blacklisted(&self, jti: &str) -> Result<bool, JwtError> {
         let c = self.conn();
-        let mut stmt = c
-            .prepare(&format!(
-                "SELECT 1 FROM {} WHERE jti = ?1 AND expire_time > ?2",
-                self.table
-            ))
-            .map_err(db_err)?;
+        // prepare_cached：单连接 + Mutex 的场景下复用编译计划（热路径每请求一次查询）
+        let mut stmt = c.prepare_cached(&self.select_sql).map_err(db_err)?;
         // 表不存在等错误必须冒泡（静默 false 会放行本应拦截的令牌）
         stmt.exists(rusqlite::params![jti, crate::jwt::now()])
             .map_err(db_err)
@@ -104,10 +107,7 @@ impl TokenStorage for DatabaseTokenStorage {
 
     fn cleanup(&self) -> Result<bool, JwtError> {
         self.conn()
-            .execute(
-                &format!("DELETE FROM {} WHERE expire_time <= ?1", self.table),
-                rusqlite::params![crate::jwt::now()],
-            )
+            .execute(&self.delete_sql, rusqlite::params![crate::jwt::now()])
             .map(|_| true)
             .map_err(db_err)
     }
@@ -144,7 +144,7 @@ mod tests {
 
     #[test]
     fn invalid_table_name_rejected() {
-        // 不用 unwrap_err()：那要求 Ok 侧 Debug，而本类型（同 redis/file 驱动）不派生 Debug
+        // let-else 而非 unwrap_err()：Ok 侧无 Debug 时 unwrap_err 不可用（本类型现已派生 Debug，保留 let-else 以对齐其他驱动测试写法）
         let Err(e) = DatabaseTokenStorage::new(None, "bad name;drop", false) else {
             panic!("invalid table name must be rejected");
         };

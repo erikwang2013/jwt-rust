@@ -150,6 +150,109 @@ async fn attach_preserves_404_and_except_body() {
 }
 
 #[tokio::test]
+async fn blacklisted_token_is_401_with_message() {
+    let (app, auth) = app();
+    // 适配层黑名单存储接线 e2e：先拉黑，再走层 → 401 具体文案
+    let token = auth.jwt().encode(&json!({"user_id": 7}), None).unwrap();
+    assert!(auth.jwt().blacklist(&token).unwrap());
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/me")
+                .header("Authorization", format!("Bearer {token}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    let body = axum::body::to_bytes(resp.into_body(), 4096).await.unwrap();
+    let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(v["msg"], "Token has been blacklisted");
+}
+
+#[tokio::test]
+async fn refresh_token_is_401_as_access_token() {
+    let (app, auth) = app();
+    let refresh = auth
+        .jwt()
+        .encode(&json!({"user_id": 7, "token_type": "refresh"}), None)
+        .unwrap();
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/me")
+                .header("Authorization", format!("Bearer {refresh}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    let body = axum::body::to_bytes(resp.into_body(), 4096).await.unwrap();
+    let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(v["msg"], "Refresh token cannot be used as an access token");
+}
+
+/// fail_open 端到端：存储故障时 false → 401（fail-closed），true → 放行（适配层接线）
+#[cfg(feature = "database")]
+#[tokio::test]
+async fn storage_failure_respects_fail_open() {
+    fn down_config(fail_open: bool) -> JwtConfig {
+        JwtConfig {
+            secret_key: "0123456789abcdef0123456789abcdef".into(),
+            storage: jwt_rust::config::StorageConfig {
+                r#type: "database".into(),
+                // 共享内存库 + 不建表：每次查询都报 Storage（表不存在）
+                path: Some("file:jwt_rust_failopen?mode=memory&cache=shared".into()),
+                auto_create_table: false,
+                fail_open,
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+    fn app_of(auth: JwtAuth) -> Router {
+        Router::new()
+            .route("/api/me", get(|| async { "ok" }))
+            .layer(JwtLayer::new(Arc::new(auth)))
+    }
+
+    // fail-closed：存储故障不得放行，且对外统一文案（Storage 细节不泄露）
+    let closed = JwtAuth::from_config(down_config(false)).unwrap();
+    let token = closed.jwt().encode(&json!({"user_id": 7}), None).unwrap();
+    let resp = app_of(closed)
+        .oneshot(
+            Request::builder()
+                .uri("/api/me")
+                .header("Authorization", format!("Bearer {token}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    let body = axum::body::to_bytes(resp.into_body(), 4096).await.unwrap();
+    let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(v["msg"], "Token authentication failed");
+
+    // fail-open：故障期间放行
+    let open = JwtAuth::from_config(down_config(true)).unwrap();
+    let token = open.jwt().encode(&json!({"user_id": 7}), None).unwrap();
+    let resp = app_of(open)
+        .oneshot(
+            Request::builder()
+                .uri("/api/me")
+                .header("Authorization", format!("Bearer {token}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+}
+
+#[tokio::test]
 async fn expired_token_is_401_with_message() {
     let (app, _) = app();
     let now = std::time::SystemTime::now()

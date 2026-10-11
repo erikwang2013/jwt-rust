@@ -36,6 +36,16 @@ jobs:
       - name: cargo clippy
         run: cargo clippy --all-features --all-targets -- -D warnings
 
+      # docs.rs 全 feature 文档是卖点：把文档构建纳入门禁，防 rustdoc 警告/坏链接回归
+      - name: cargo doc
+        run: cargo doc --all-features --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+      # include_str!("../docs/pet.svg") 依赖资源进包：把打包校验（含从包构建）纳入门禁
+      - name: cargo package
+        run: cargo package
+
       - name: Install cargo-audit
         uses: taiki-e/install-action@v2
         with:
@@ -50,8 +60,8 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     services:
-      # The redis / memcached storage tests skip themselves when the service is
-      # unreachable, so without these they would silently never run.
+      # The redis / memcached storage tests fail loudly when the service is
+      # unreachable (no silent skip), so CI must provide both.
       redis:
         image: redis:7
         ports:
@@ -77,6 +87,31 @@ jobs:
 
       - name: cargo test
         run: cargo test --all-features
+
+  features:
+    name: feature matrix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cmake
+        run: sudo apt-get update && sudo apt-get install -y cmake
+
+      # 消费方主路径是"只开一个 feature"：core-only 与逐个单 feature 编译必须成立
+      # （全量测试只覆盖 all-features，漏掉单 feature 下的 cfg 组合错误）
+      - name: cargo check (core only)
+        run: cargo check --no-default-features
+
+      - name: cargo check (each feature alone)
+        run: |
+          for f in redis database memcached axum actix rocket poem salvo warp bee-rust ecat ecat-grpc; do
+            echo "== feature: $f =="
+            cargo check --no-default-features --features "$f"
+          done
 
   msrv:
     name: msrv (1.88)

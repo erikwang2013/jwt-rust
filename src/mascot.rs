@@ -55,12 +55,12 @@ pub fn banner(color: Option<bool>) -> String {
         out.push_str(&format!("  {name}{tagline}\n"));
         out.push_str(&format!("  {ready}\n"));
     }
-    // 首页链接有意不着色（与 PHP 版对齐），勿当漏色误改
+    // 首页链接有意不着色，勿当漏色误改
     out.push_str(&format!("  {HOME}\n\n"));
     out
 }
 
-/// 宠物矢量形象（编译期内嵌 docs/pet.svg，对应 PHP Mascot::svg()）
+/// 宠物矢量形象（编译期内嵌 docs/pet.svg）
 pub fn svg() -> &'static str {
     include_str!("../docs/pet.svg")
 }

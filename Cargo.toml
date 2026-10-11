@@ -1,6 +1,6 @@
 [package]
 name = "jwt-rust"
-version = "1.0.1"
+version = "1.0.2"
 edition = "2024"
 rust-version = "1.88"
 description = "A framework-agnostic JWT plugin for plain Rust and axum, actix-web, rocket, poem, salvo, warp, bee-rust, e-cat: one core, a request guard or eight native adapters, pluggable blacklist storage (redis / database / file / memcached)."
@@ -26,7 +26,9 @@ jsonwebtoken = { version = "11.1.0", features = ["aws_lc_rs"] }
 log = "0.4.34"
 memcache = { version = "0.21.0", optional = true }
 poem = { version = "3.1.12", optional = true }
-redis = { version = "1.7.1", optional = true }
+# default-features=false：默认 feature（acl/streams/geospatial/script/num-bigint）本库全部用不到，
+# 只影响编译量/依赖图（SETEX/EXISTS/PING/TTL 等核心命令不受 feature 门控）
+redis = { version = "1.7.1", optional = true, default-features = false }
 regex = "1.13.1"
 rocket = { version = "0.5.1", optional = true }
 rusqlite = { version = "0.40.2", features = ["bundled"], optional = true }

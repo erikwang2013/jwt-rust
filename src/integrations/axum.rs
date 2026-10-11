@@ -1,5 +1,5 @@
 // Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz
-//! axum integration (tower layer over `Route`; mirrors the PHP Webman middleware).
+//! axum integration (tower layer over `Route`).
 
 use std::convert::Infallible;
 use std::future::Future;
@@ -20,7 +20,7 @@ use crate::native::unauthorized_body;
 /// 服务返回的 future：内层 [`Route`] 的 future 或即时的 401 响应
 type AuthFuture = Pin<Box<dyn Future<Output = Result<Response, Infallible>> + Send>>;
 
-/// axum 适配：tower 中间件层（对应 PHP Webman\Middleware）
+/// axum 适配：tower 中间件层
 ///
 /// ```no_run
 /// # use std::sync::Arc;
@@ -30,7 +30,9 @@ type AuthFuture = Pin<Box<dyn Future<Output = Result<Response, Infallible>> + Se
 /// let app = JwtLayer::new(Arc::new(auth)).attach(router);
 /// ```
 ///
-/// Note: `attach` 经 `route_layer` 只包已注册路由——未匹配路径保持 404、不经鉴权。
+/// Note: `attach` 经 `route_layer` 只包**调用时已注册**的路由——请先注册完全部路由、最后调用 `attach`，
+/// 之后追加的路由不会经过鉴权层（axum 文档明示的 route_layer 语义，静默无鉴权）。
+/// 未匹配路径保持 404、不经鉴权。
 /// 若用 `Router::layer(JwtLayer::new(...))`，axum 会把层同时套到 fallback，未匹配路径将以 401（无 token 时）作答；要保 404 语义请用 `attach`。
 /// `attach` 对空路由（无任何注册路由）会 panic（axum `route_layer` 的设计），请至少注册一条路由后再挂。
 #[derive(Clone)]

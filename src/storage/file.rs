@@ -19,6 +19,7 @@ struct Entry {
 }
 
 /// 文件系统黑名单（原子写 tmp+rename、概率 GC、非 hex jti 转 hex 文件名）
+#[derive(Debug)]
 pub struct FileTokenStorage {
     path: PathBuf,
     gc_probability: f64,
@@ -26,9 +27,13 @@ pub struct FileTokenStorage {
 
 impl FileTokenStorage {
     pub fn new(path: Option<PathBuf>) -> Result<Self, JwtError> {
-        let path = path.unwrap_or_else(|| std::env::temp_dir().join("jwt_blacklist"));
+        // 空 path 视同未配置：env 侧有 is_empty → None 归一化，TOML 的 path = "" 在此对齐
+        // （否则 "" 经递归 create 静默成功，落盘落到进程 CWD）
+        let path = path
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or_else(|| std::env::temp_dir().join("jwt_blacklist"));
         if !path.is_dir() {
-            // 仅在新建时设 0700（同 PHP mkdir 的 mode 语义：已存在目录不动其权限）；
+            // 仅在新建时设 0700（已存在目录不动其权限）；
             // DirBuilder::mode 在 mkdir 时应用，显式 set_permissions 兜底极端 umask
             #[cfg(unix)]
             {
@@ -50,6 +55,38 @@ impl FileTokenStorage {
                     path.display()
                 ))
             })?;
+        } else {
+            // 已存在目录（含他人预创建）：先拒绝 group/other 可写的目录（他人可删除/伪造黑名单条目），
+            // 再做写入探测——属主不符（EACCES）、只读挂载等在此启动期显式失败，
+            // 而不是等到每请求静默放行（读错误 → Ok(false)）或报错。
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let mode = fs::metadata(&path)
+                    .map_err(|e| {
+                        JwtError::storage(format!(
+                            "Cannot stat storage directory: {} ({e})",
+                            path.display()
+                        ))
+                    })?
+                    .permissions()
+                    .mode();
+                if mode & 0o022 != 0 {
+                    return Err(JwtError::storage(format!(
+                        "Storage directory {} is writable by group/other (mode {:o}); chmod 700 it or configure another path",
+                        path.display(),
+                        mode & 0o777
+                    )));
+                }
+            }
+            let probe = path.join(format!(".jwt_write_probe_{}", std::process::id()));
+            fs::write(&probe, b"").map_err(|e| {
+                JwtError::storage(format!(
+                    "Storage directory {} is not writable: {e}",
+                    path.display()
+                ))
+            })?;
+            let _ = fs::remove_file(&probe);
         }
         Ok(Self {
             path,
@@ -67,11 +104,16 @@ impl FileTokenStorage {
     }
 
     fn file_path(&self, jti: &str) -> PathBuf {
-        // 非 hex 转 hex 文件名：杜绝路径穿越，不改变本库 hex jti 的文件名（同 PHP）
-        let name = if jti.bytes().all(|b| b.is_ascii_hexdigit()) {
+        // 非 hex 转 hex 文件名：杜绝路径穿越，且不改变本库 hex jti 的文件名。
+        // 空 jti 无 hex 转写结果（会成裸 ".json"），按 sha256 摘要落名，与 sanitize_key_sha256 的空串处理对齐。
+        // 已知边角（方向为过度拉黑）：非 hex jti 的转写名与"恰好等于该转写串"的另一 hex jti 撞名。
+        let name = if !jti.is_empty() && jti.bytes().all(|b| b.is_ascii_hexdigit()) {
             jti.to_string()
+        } else if jti.is_empty() {
+            use sha2::{Digest, Sha256};
+            hex_encode(Sha256::digest(jti.as_bytes()))
         } else {
-            jti.bytes().map(|b| format!("{b:02x}")).collect()
+            hex_encode(jti.bytes())
         };
         self.path.join(format!("{name}.json"))
     }
@@ -98,11 +140,20 @@ fn now() -> i64 {
         .unwrap_or(0)
 }
 
+fn hex_encode(bytes: impl IntoIterator<Item = u8>) -> String {
+    use std::fmt::Write as _;
+    let mut out = String::with_capacity(64);
+    for b in bytes {
+        let _ = write!(out, "{b:02x}");
+    }
+    out
+}
+
 impl TokenStorage for FileTokenStorage {
     fn blacklist(&self, jti: &str, expire_time: i64) -> Result<bool, JwtError> {
         let now = now();
         if expire_time <= now {
-            return Ok(true); // 已过期无需记录（同 PHP）；直接比较，避免减法在极端值下溢出
+            return Ok(true); // 已过期无需记录；直接比较，避免减法在极端值下溢出
         }
         let file = self.file_path(jti);
         let data = serde_json::to_vec(&Entry {
@@ -112,7 +163,7 @@ impl TokenStorage for FileTokenStorage {
         })
         .map_err(|e| JwtError::storage(format!("Failed to serialize blacklist entry: {e}")))?;
         // 原子写：同目录临时文件 + rename，并发读永不见半截 JSON。
-        // tmp 名随机后缀（同 PHP random_bytes(4)）：同进程并发写同一 jti 互不踩踏（getrandom 失败回退 pid）
+        // tmp 名随机后缀（4 字节随机）：同进程并发写同一 jti 互不踩踏（getrandom 失败回退 pid）
         let mut rnd = [0u8; 4];
         if getrandom::fill(&mut rnd).is_err() {
             rnd = (std::process::id() as u32).to_le_bytes();
@@ -136,7 +187,7 @@ impl TokenStorage for FileTokenStorage {
 
     fn is_blacklisted(&self, jti: &str) -> Result<bool, JwtError> {
         let file = self.file_path(jti);
-        // 读错误/解析失败静默视为未拉黑（对齐 PHP @file_get_contents 语义）；仅日志便于排障
+        // 读错误/解析失败静默视为未拉黑（可用性优先的取舍）；仅日志便于排障
         let content = match fs::read_to_string(&file) {
             Ok(c) => c,
             Err(e) => {
@@ -341,5 +392,55 @@ mod tests {
     fn new_none_uses_default_dir() {
         let s = FileTokenStorage::new(None).unwrap();
         assert!(s.path().ends_with("jwt_blacklist"));
+    }
+
+    #[test]
+    fn empty_path_falls_back_to_default_dir() {
+        // TOML path = "" 与 env 的空值归一化对齐：不得落到进程 CWD
+        let s = FileTokenStorage::new(Some(PathBuf::from(""))).unwrap();
+        assert!(s.path().ends_with("jwt_blacklist"));
+    }
+
+    #[test]
+    fn empty_jti_gets_digest_filename() {
+        let dir = tmp_dir("emptyjti");
+        let s = FileTokenStorage::new(Some(dir.clone()))
+            .unwrap()
+            .with_gc_probability(0.0);
+        assert!(s.blacklist("", now() + 60).unwrap());
+        assert!(s.is_blacklisted("").unwrap());
+        let files: Vec<_> = fs::read_dir(&dir)
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().into_string().unwrap())
+            .collect();
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].len(), 64 + ".json".len()); // sha256 摘要名，非裸 ".json"
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn preexisting_group_writable_dir_is_rejected() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tmp_dir("perm_bad");
+        fs::create_dir_all(&dir).unwrap();
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o777)).unwrap();
+        // 他人可写 = 可删除/伪造黑名单条目 → 启动期拒绝
+        let e = FileTokenStorage::new(Some(dir.clone())).unwrap_err();
+        assert!(matches!(e, JwtError::Storage(_)), "got {e:?}");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn preexisting_private_dir_is_accepted() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tmp_dir("perm_ok");
+        fs::create_dir_all(&dir).unwrap();
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).unwrap();
+        let s = FileTokenStorage::new(Some(dir.clone())).unwrap();
+        assert!(s.blacklist("a1", now() + 60).unwrap());
+        assert!(s.is_blacklisted("a1").unwrap());
+        let _ = fs::remove_dir_all(&dir);
     }
 }

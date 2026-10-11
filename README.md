@@ -58,7 +58,7 @@
 jwt-rust/
 ├── src/                               核心与九种接入方式
 │   ├── lib.rs                         crate 根：公共导出 + feature 门控模块
-│   ├── error.rs                       核心：异常层级 JwtError（错误码 1-6 与 PHP 版一一对应）
+│   ├── error.rs                       核心：异常层级 JwtError（稳定错误码 1-6）
 │   ├── config.rs                      核心：配置容器 JwtConfig，环境变量 / TOML / builder 三种入口
 │   ├── jwt.rs                         核心：Jwt 令牌编解码、刷新、黑名单、清理 + JwtPayload + bearer_token()
 │   ├── factory.rs                     核心：工厂 JwtFactory，按配置组装内核与存储
@@ -77,7 +77,7 @@ jwt-rust/
 │       ├── axum.rs / actix.rs / rocket.rs / poem.rs / salvo.rs / warp.rs
 │       ├── bee_rust.rs                bee-rust：bee_router::Filter 实现
 │       └── ecat.rs → ecat/grpc.rs     e-cat：tower Layer（+ feature ecat-grpc 下的 gRPC 拦截器）
-├── tests/                             集成测试（29 个用例）：八个框架适配层 + e-cat gRPC
+├── tests/                             集成测试（40 个用例）：八个框架适配层 + e-cat gRPC
 ├── examples/
 │   └── mascot.rs                      可运行示例：打印宠物横幅与 svg 字节数
 ├── docs/                              文档与图形资源
@@ -99,11 +99,11 @@ jwt-rust/
 cargo test --all-features
 ```
 
-**109 个用例全部通过**（79 个核心与存储单元测试 + 29 个八框架适配层集成测试 + 1 个文档测试；另有 1 个 rocket 用法示例文档测试标为 `ignored`）。
+**134 个用例全部通过**（93 个核心与存储单元测试 + 40 个八框架适配层集成测试 + 1 个文档测试；另有 1 个 rocket 用法示例文档测试标为 `ignored`）。
 
-- 核心与存储单元测试：配置加载与默认值、错误分级与文案、编解码（含 iss / aud / leeway / 过期）、刷新轮换、黑名单、四种存储驱动的原子写与概率 GC、except 白名单匹配、宠物横幅
-- 框架集成测试：逐框架验证「无 token → 401 统一 JSON 体 / 有效 token 放行且 payload 可取 / except 白名单 / 过期令牌 → 401 具体文案」，并锁定各自的 404、响应头等语义；e-cat 另含 gRPC 拦截器的 metadata 有无 token 两类场景
-- redis / memcached 驱动的测试要求本机服务可用：可用时执行完整往返断言（含 SETEX TTL、>30 天 TTL 协议坑），不可用时打印 skip 而非失败
+- 核心与存储单元测试：配置加载与默认值、错误分级与文案、编解码（含 iss / aud / leeway / 过期）、刷新轮换、黑名单、四种存储驱动的原子写与概率 GC、except 白名单匹配、宠物横幅；安全负路径回归锁（篡改签名 / 算法混淆 / `alg:"none"` / future nbf / 无 exp 登出 / leeway 上限 / PEM 误配 / 存储目录权限）
+- 框架集成测试：逐框架验证「无 token → 401 统一 JSON 体 / 有效 token 放行且 payload 可取 / except 白名单 / 过期令牌 → 401 具体文案 / **已拉黑令牌 → 401**」，并锁定各自的 404、响应头等语义；e-cat 另含 gRPC 拦截器的 metadata 有无 token 两类场景；axum 另含 refresh 误用与 fail_open 双分支端到端
+- redis / memcached 驱动的测试要求本机 / CI 服务可用：可用时执行完整往返断言（含 SETEX TTL、>30 天 TTL 协议坑、单台宕机降级），不可用时**测试直接失败**并给出提示——避免静默 skip 造成「本地全绿」的假绿；本地无服务时设 `JWT_TEST_SKIP_SERVICES=1` 显式跳过
 
 ## 架构设计
 
@@ -115,7 +115,7 @@ cargo test --all-features
 | **接入层** | 原生 Rust 用 `native::Guard` 守卫请求；八框架用各自的惯用机制（tower Layer / 中间件 / 过滤器 / 请求守卫）接入 | 九种接入方式互不感知，核心不反向依赖任何一方 |
 | **框架无关内核** | 令牌编解码、刷新、黑名单、异常分级、配置与工厂 | 零框架类型，仅依赖 `jsonwebtoken` 与 `log` facade |
 | **可插拔存储层** | 黑名单读写、过期回收、故障策略 | 只认 `TokenStorage` trait；驱动与 `fail_open` 由配置决定 |
-| **底层依赖** | JWT 编解码引擎与日志 | 未接入 logger 时 `log` 宏零成本静默，等价 PHP 的 NullLogger |
+| **底层依赖** | JWT 编解码引擎与日志 | 未接入 logger 时 `log` 宏零成本静默（无任何输出） |
 
 ## 功能设计
 
@@ -138,7 +138,7 @@ cargo test --all-features
 - 存储操作失败自动重试，故障时可配置放行或拒绝
 - 原生 Rust 直接可用：`native::Guard` 请求守卫 + TOML / 环境变量配置，零框架依赖
 - 八框架深度集成：中间件 / 过滤器 / 请求守卫，按框架惯用法接入
-- e-cat gRPC 拦截器（PHP 版无对等能力）：tonic `InterceptorLayer` 挂在服务上，与 HTTP 层共用同一套校验与黑名单
+- e-cat gRPC 拦截器：tonic `InterceptorLayer` 挂在服务上，与 HTTP 层共用同一套校验与黑名单
 
 ## 安装
 
@@ -177,7 +177,7 @@ jwt-rust = { version = "1.0", features = ["axum"] }
 
 ## 核心 API
 
-`JwtFactory` 是内核的组装入口，`Jwt` 是令牌 API 本身（对应 PHP 版的 `JWTFactory` / `JWT`，便捷封装与自动取头做在同层）：
+`JwtFactory` 是内核的组装入口，`Jwt` 是令牌 API 本身（便捷封装与自动取头做在同层）：
 
 ```rust
 use std::path::Path;
@@ -220,6 +220,7 @@ let new_token = jwt.refresh(&refresh, None)?;
 jwt.blacklist(&token)?;
 
 // 检查令牌是否在黑名单（不验签，只按 jti 查询）
+// 注意：未验证入口，且存储故障时恒返回 false（fail-open）——与本库 decode 的 fail-closed 默认相反
 if jwt.is_blacklisted(&token) { /* ... */ }
 
 // 清理过期黑名单条目，建议放进定时任务
@@ -243,8 +244,9 @@ jwt.cleanup()?;
 **1. 准备配置**：环境变量（`JWT_*`，见[配置文件参考](#配置文件参考)）或一个 TOML 文件：
 
 ```toml
-# 至少 32 字符（256 位）
-secret_key = "replace-with-a-key-of-at-least-32-chars"
+# 至少 32 字符（256 位），用 openssl rand -hex 32 生成后替换；
+# 示例占位串故意通不过长度校验，复制即报配置错误、不会带病上线
+secret_key = "CHANGE_ME_openssl_rand_hex_32"
 algorithm = "HS256"
 
 [middleware]
@@ -321,7 +323,7 @@ use jwt_rust::integrations::JwtAuth;
 use jwt_rust::jwt::JwtPayload;
 
 let auth = JwtAuth::from_config(JwtConfig {
-    secret_key: "0123456789abcdef0123456789abcdef".into(),
+    secret_key: "CHANGE_ME_openssl_rand_hex_32".into(),
     middleware: MiddlewareConfig { except: vec!["/api/login".into()] },
     ..Default::default()
 })?;
@@ -340,7 +342,7 @@ let app = JwtLayer::new(Arc::new(auth)).attach(app);
 
 **注意：**
 
-- `attach`（内部即 `Router::route_layer`）只对已注册路由生效——未匹配路径保持 404、不经鉴权；改用 `Router::layer(JwtLayer::new(...))` 会把层同时套到 fallback，未匹配路径在无 token 时也会以 401 作答
+- `attach`（内部即 `Router::route_layer`）只对**调用 `attach` 时已注册**的路由生效——**务必先注册完全部路由，最后再 `attach`**：attach 之后追加的路由不会经过鉴权层（axum 文档明示的 route_layer 语义，静默无鉴权）；未匹配路径保持 404、不经鉴权；改用 `Router::layer(JwtLayer::new(...))` 会把层同时套到 fallback，未匹配路径在无 token 时也会以 401 作答
 - 对**空路由**（未注册任何路由）调用 `attach` 会 panic（axum `route_layer` 的设计），请至少注册一条路由后再挂
 - `nest` 会把前缀从内层看到的路径中剥掉，**挂在 nest 子树内的层，except 名单要用子路由的相对路径**书写
 - CORS 预检（`OPTIONS`）也走鉴权：需要在外层用 `CorsLayer` 短路预检，或自行注册 OPTIONS 路由
@@ -360,7 +362,7 @@ use jwt_rust::integrations::JwtAuth;
 use jwt_rust::jwt::JwtPayload;
 
 let auth = Arc::new(JwtAuth::from_config(JwtConfig {
-    secret_key: "0123456789abcdef0123456789abcdef".into(),
+    secret_key: "CHANGE_ME_openssl_rand_hex_32".into(),
     middleware: jwt_rust::config::MiddlewareConfig { except: vec!["/api/login".into()] },
     ..Default::default()
 })?);
@@ -408,7 +410,7 @@ fn me(p: JwtGuard) -> String {
 #[rocket::launch]
 fn rocket() -> _ {
     let auth = JwtAuth::from_config(JwtConfig {
-        secret_key: "0123456789abcdef0123456789abcdef".into(),
+        secret_key: "CHANGE_ME_openssl_rand_hex_32".into(),
         ..Default::default()
     }).unwrap();
     rocket::build()
@@ -440,7 +442,7 @@ use jwt_rust::integrations::poem::JwtMiddleware;
 use jwt_rust::integrations::JwtAuth;
 
 let auth = Arc::new(JwtAuth::from_config(JwtConfig {
-    secret_key: "0123456789abcdef0123456789abcdef".into(),
+    secret_key: "CHANGE_ME_openssl_rand_hex_32".into(),
     middleware: jwt_rust::config::MiddlewareConfig { except: vec!["/api/login".into()] },
     ..Default::default()
 })?);
@@ -485,7 +487,7 @@ async fn me(depot: &mut Depot, res: &mut Response) {
 }
 
 let auth = std::sync::Arc::new(JwtAuth::from_config(JwtConfig {
-    secret_key: "0123456789abcdef0123456789abcdef".into(),
+    secret_key: "CHANGE_ME_openssl_rand_hex_32".into(),
     middleware: jwt_rust::config::MiddlewareConfig { except: vec!["/api/login".into()] },
     ..Default::default()
 })?);
@@ -519,7 +521,7 @@ use jwt_rust::integrations::JwtAuth;
 use jwt_rust::jwt::JwtPayload;
 
 let auth = Arc::new(JwtAuth::from_config(JwtConfig {
-    secret_key: "0123456789abcdef0123456789abcdef".into(),
+    secret_key: "CHANGE_ME_openssl_rand_hex_32".into(),
     ..Default::default()
 })?);
 
@@ -551,7 +553,7 @@ use jwt_rust::integrations::bee_rust::JwtFilter;
 use jwt_rust::integrations::JwtAuth;
 
 let auth = Arc::new(JwtAuth::from_config(JwtConfig {
-    secret_key: "0123456789abcdef0123456789abcdef".into(),
+    secret_key: "CHANGE_ME_openssl_rand_hex_32".into(),
     middleware: jwt_rust::config::MiddlewareConfig { except: vec!["/api/login".into()] },
     ..Default::default()
 })?);
@@ -603,11 +605,11 @@ routes.add_service(svc);
 
 ## 配置文件参考
 
-环境变量名与 PHP 版逐字相同，共 18 个（`JwtConfig::from_env()` 读取）：
+共 18 个环境变量（`JwtConfig::from_env()` 读取）：
 
 | 环境变量 | 默认值 | 说明 |
 |------|------|------|
-| `JWT_SECRET_KEY` | （必填） | 签名密钥，至少 32 字符（256 位）；RS256 时为私钥 PEM |
+| `JWT_SECRET_KEY` | （必填） | 签名密钥，至少 32 字符（256 位），用 `openssl rand -hex 32` 生成；RS256 时为私钥 PEM |
 | `JWT_ALGORITHM` | `HS256` | 签名算法：HS256 / HS384 / HS512 / RS256 |
 | `JWT_ISSUER` | 空 | 签发者标识，空则不校验 |
 | `JWT_AUDIENCE` | 空 | 受众标识，空则不校验（令牌的 aud 为数组时按包含匹配） |
@@ -626,13 +628,13 @@ routes.add_service(svc);
 | `JWT_AUTO_CLEANUP` | `false` | 保留字段：Rust 版**不自动执行**，供背景任务读取 |
 | `JWT_CLEANUP_INTERVAL` | `3600` | 自动清理间隔（秒），同上 |
 
-布尔的解析规则与 PHP `FILTER_VALIDATE_BOOLEAN` 一致：`1` / `true` / `yes` / `on`（trim 后、大小写不敏感）为真，其余为假；数值解析失败时回落到默认值。
+布尔的解析规则：`1` / `true` / `yes` / `on`（trim 后、大小写不敏感）为真，其余为假——宽松解析，照顾多种书写习惯；数值解析失败时同样回落到默认值。
 
 **TOML 配置文件**（`JwtFactory::from_file()`，键名与本表字段一一对应）：
 
 ```toml
-# 签名密钥，至少 32 字符（256 位）
-secret_key = "0123456789abcdef0123456789abcdef"
+# 签名密钥，至少 32 字符（256 位），用 openssl rand -hex 32 生成后替换
+secret_key = "CHANGE_ME_openssl_rand_hex_32"
 # 签名算法：HS256 / HS384 / HS512 / RS256
 algorithm = "HS256"
 # 签发者 / 受众标识，留空则不校验
@@ -661,7 +663,8 @@ gc_probability = 0.1
 # 存储故障时：false（默认）拒绝所有令牌；true 放行并记 error 日志
 fail_open = false
 # redis / memcached 驱动：服务器列表（host:port 或完整 URL；仅 TOML 配置，无对应环境变量）
-servers = ["127.0.0.1:11211"]
+# 缺省（空/未写）时各驱动按自身默认回落：redis → 127.0.0.1:6379，memcached → 127.0.0.1:11211
+# servers = ["127.0.0.1:11211", "127.0.0.1:11212"]
 
 [advanced]
 # 存储操作失败重试次数与延迟（毫秒）
@@ -676,7 +679,7 @@ cleanup_interval = 3600
 except = []
 ```
 
-未知的 TOML 键会被忽略（与 PHP 数组配置同语义）。也可以用 builder 直接构造：`JwtConfig::default().with_secret("…").with_issuer("…")` 等。
+未知的 TOML 键会被忽略（宽松解析：同一份配置可携带多环境/多版本的额外键而不报错）。也可以用 builder 直接构造：`JwtConfig::default().with_secret("…").with_issuer("…")` 等。
 
 **RS256 密钥**：`secret_key` 填**私钥** PEM，支持 PKCS#1（`BEGIN RSA PRIVATE KEY`）与 PKCS#8（`BEGIN PRIVATE KEY`）两种格式。公钥 PEM 会在装配期（`Jwt::new` / `JwtFactory`）直接报配置错误，而不是等到运行期验签失败——配置错误在启动期暴露。
 
@@ -698,10 +701,10 @@ except = []
 
 **各驱动语义：**
 
-- `file`：`{path}/{key}.json`，内容 `{jti, expire_time, created_at}`；原子写（临时文件 + rename）、过期即删、概率 GC、cleanup 回收过期条目与写崩残留的临时文件；非十六进制 `jti` 转成十六进制文件名（杜绝路径穿越）
-- `redis`：`SETEX` 写入、`EXISTS` 查询；键 = 前缀 + 净化后的 jti；只取 `servers` 首项，未配置则回落 `127.0.0.1:6379`；懒连接，出错置空下次重建；cleanup 为空实现（Redis 自动过期）
+- `file`：`{path}/{key}.json`，内容 `{jti, expire_time, created_at}`；原子写（临时文件 + rename）、过期即删、概率 GC、cleanup 回收过期条目与写崩残留的临时文件；非十六进制 `jti` 转成十六进制文件名（杜绝路径穿越）；已存在的目录须**不可被 group/other 写**（否则装配期报 Storage 错误——防共享主机上他人预创建目录后删除/伪造条目），新目录以 0700 创建
+- `redis`：`SETEX` 写入、`EXISTS` 查询；键 = 前缀 + 净化后的 jti；只取 `servers` 首项，未配置则回落 `127.0.0.1:6379`；懒连接（1 秒建连与读写超时——防 SYN 黑洞/半开连接无限阻塞），出错置空下次重建；cleanup 为空实现（Redis 自动过期）
 - `database`：SQLite（rusqlite，bundled 编译）；写入为幂等 upsert（`INSERT … ON CONFLICT(jti) DO UPDATE`）；表名白名单校验（`[A-Za-z_][A-Za-z0-9_]*`）。**局限**：v1 仅 SQLite——单机文件库，非网络数据库；MySQL / PostgreSQL 等实现 `TokenStorage` trait 即可自行接入
-- `memcached`：`set` 写入、读查询；使用全部 `servers`，未配置则回落 `127.0.0.1:11211`；>30 天的 TTL 按绝对时间戳写入（协议坑修复）；键规则同 redis；cleanup 为空实现
+- `memcached`：`set` 写入、读查询；每个 `servers` 条目独立连接池（池大小 4、1 秒连接池预算，读路径并发），按 key 确定性哈希路由——**单台宕机只剔除该台、其余照常服务**（健康节点优先的降级语义；旧版为全有或全无；被剔除服务器承载的键在恢复前不可见），全部不可达才报 Storage；未配置则回落 `127.0.0.1:11211`；>30 天的 TTL 按绝对时间戳写入（协议坑修复）；键规则同 redis；cleanup 为空实现
 
 ## 注意事项
 
@@ -740,11 +743,18 @@ except = ["api/login|api/logout"]        # 正确：两个分支都能命中
 
 `decode()` 查询黑名单时若存储抛错，默认向上抛出 `JwtError::Storage`，适配层据此返回 401 —— 这是刻意选择的 fail-closed：撤销信息不可信时不放行。更看重可用性的业务可以显式打开 `storage.fail_open`，此时故障期间签名有效的令牌会被放行，并记录 error 日志。
 
-例外：**file 驱动的读路径**在文件读错误 / 条目损坏时静默视为「未拉黑」（与 PHP 版 `@file_get_contents` 语义对齐），fail-closed 在那里不生效；驱动会记 warn 日志便于排障。
+例外：**file 驱动的读路径**在文件读错误 / 条目损坏时静默视为「未拉黑」——该驱动取「可用性优先」的取舍（读错误不等于可确认的「已拉黑」，宁可放行不误杀），fail-closed 在那里不生效；驱动会记 warn 日志便于排障。
+
+### file 驱动目录的位置与权限
+
+默认目录是**系统临时目录**下的 `jwt_blacklist`（用 `JWT_STORAGE_PATH` / `storage.path` 覆盖；env 空值视同未配置，TOML 的 `path = ""` 同样按未配置处理）。两点提醒：
+
+- 临时目录（多为 tmpfs）**重启即清空**，黑名单随之丢失、已登出的令牌会「复活」——生产环境请显式指定持久化目录
+- 装配期会对**已存在**的目录做校验：group/other 可写（他人可删除/伪造黑名单条目）或本进程不可写时直接报 Storage 错误；自查用 `chmod 700 <dir>`
 
 ### 存储驱动是同步 IO（async 运行时须知）
 
-四种存储驱动（file / redis / database / memcached）全部是**同步阻塞 IO**，`TokenStorage` trait 的方法均为同步签名（与 PHP 版一致）。在 axum / actix-web 等 async 运行时中，`decode()` 里的黑名单查询是**每请求同步调用**：每个带 `jti` 的令牌校验都会占用一个 worker 线程做一次存储查询（无 `jti` 的令牌跳过该查询）。存储出错进入 `RetryTokenStorage` 重试时，等待用 `std::thread::sleep` 实现，最坏阻塞 `retry_delay × (retry_attempts − 1)`（默认 `retry_delay` 100ms、`retry_attempts` 3，即 2 次等待约 200ms）；后端自身的连接 / 锁超时还会叠加（如 memcached 建连超时 1 秒）。
+四种存储驱动（file / redis / database / memcached）全部是**同步阻塞 IO**，`TokenStorage` trait 的方法均为同步签名。在 axum / actix-web 等 async 运行时中，`decode()` 里的黑名单查询是**每请求同步调用**：每个带 `jti` 的令牌校验都会占用一个 worker 线程做一次存储查询（无 `jti` 的令牌跳过该查询）。存储出错进入 `RetryTokenStorage` 重试时，等待用 `std::thread::sleep` 实现，最坏阻塞 `retry_delay × (retry_attempts − 1)`（默认 `retry_delay` 100ms、`retry_attempts` 3，即 2 次等待约 200ms）；后端自身的连接 / 锁超时还会叠加（redis 为 1 秒建连与读写超时；memcached 为 1 秒连接池预算——socket 读写超时未设置，半开连接下读可长时间阻塞）。
 
 对多数部署这不构成问题——redis / memcached 查询是亚毫秒级的，file / database（SQLite）在低并发下同样足够。高并发或存储延迟较高时可以：
 
@@ -761,11 +771,15 @@ except = ["api/login|api/logout"]        # 正确：两个分支都能命中
 
 ### refresh 非原子与无 exp 刷新令牌
 
-`refresh()` 的「换发 + 旧 jti 入黑名单」不是原子操作，并发窗口内同一枚刷新令牌可能各签出一枚有效新令牌（PHP 版同样非原子）；旧 jti 在换发时立即入黑名单，但已换发出的新令牌不受影响。另外，外部签发、**没有 `exp` 的刷新令牌**换发后旧令牌不会被写入黑名单（无法确定何时回收），即不可撤销——本插件自己签发的令牌恒有 `exp`，不受影响。
+`refresh()` 的「换发 + 旧 jti 入黑名单」不是原子操作，并发窗口内同一枚刷新令牌可能各签出一枚有效新令牌；旧 jti 在换发时立即入黑名单，但已换发出的新令牌不受影响。另外，外部签发、**没有 `exp` 的刷新令牌**换发后旧令牌不会被写入黑名单（无法确定何时回收），即不可撤销——本插件自己签发的令牌恒有 `exp`，不受影响。
+
+同样的边界也适用于登出：`blacklist()` 对**没有 `exp`** 的令牌显式返回 `Err`（四个驱动都会拒写 ttl ≤ 0 的条目，无法生效就不谎报成功）；对**没有 `jti`** 的令牌返回 `Ok(false)`（无可记录对象）。
+
+另注：`refresh()` 只在旧令牌**尚未过期**（`exp > now`）时将其写入黑名单；旧令牌已过 `exp` 但仍在 `leeway` 宽限窗口内时，换发不会拉黑它，窗口内可重复使用（`leeway = 0` 时无此窗口）。
 
 ### 常驻进程中的清理
 
-`auto_cleanup` 在 Rust 版**不会自动执行**（无 PHP `register_shutdown_function` 的对等物），字段保留供背景任务读取。请按运行环境用后台任务周期调用 `jwt.cleanup()`：
+`auto_cleanup` **不会自动执行**（本库不内建定时器），字段保留供背景任务读取。请按运行环境用后台任务周期调用 `jwt.cleanup()`：
 
 **tokio 任务：**
 
@@ -786,18 +800,22 @@ tokio::spawn(async move {
 
 file 驱动对非十六进制 `jti` 做逐字节十六进制转写（长度翻倍），写入时先落临时名 `{转写}.json.tmp.{8 位随机十六进制}`（比最终名多 13 字节），文件名超过常见文件系统的 `NAME_MAX`（255 字节）时报 Storage 错误——换算即非 hex `jti` 超过 118 字节即失败；外部 UUID（36 字符 → 72 字节）等常规输入安全；超长外部 jti 请改用 redis / database 驱动（键长度不受文件系统限制）。
 
-### JWT_LEEWAY 别开太大
+redis / memcached 对超过 64 字符的**全十六进制** `jti` 同样转 sha256 摘要（键长恒定 ≤ 64 字符）——memcached 键有 250 字节协议上限，此规则把超长外部 jti 一并挡在门外。
 
-建议 `JWT_LEEWAY` ≤ 86400。过大的容差会让 `jsonwebtoken` 内部在 debug 构建下发生整数下溢 panic；release 构建会回绕成「全量过期」（fail-closed，拒绝所有令牌）。两者都不是你想要的运行形态。
+全 hex 的 `jti` 在 file 驱动中原样作文件名（hex 转写不翻倍）：超过约 237 字节同样触 `NAME_MAX`。
+
+### JWT_LEEWAY 有上限
+
+`JWT_LEEWAY` 上限为 86400 秒（1 天），超过会在装配期（`Jwt::new` / `JwtFactory`）直接报配置错误。背景：`jsonwebtoken` 内部用无保护整数减法比较 `exp` 与 `now - leeway`，把容差配成极大值（超过当前时间戳，约 56 年——典型如把秒数写成毫秒/纳秒）会在 debug 构建下整数下溢 panic、release 构建下回绕成「全量过期」；启动期校验把这类单位笔误挡在第一现场。
 
 ### iat 不校验
 
-`iat`（签发时间）仅写入、不参与校验：即使令牌的 `iat` 为未来时间也照常放行（与 firebase/php-jwt 6.9+ 在有 `nbf` 时的行为一致——本插件签发的令牌恒有 `nbf` 参与校验，仅外部签发的无 `nbf` 令牌会走到这一差异）。
+`iat`（签发时间）仅写入、不参与校验：即使令牌的 `iat` 为未来时间也照常放行（校验以 `exp` / `nbf` 为准；本插件签发的令牌恒有 `nbf` 参与校验，仅外部签发的无 `nbf` 令牌会走到这一宽松面）。
 
 ### 401 文案与过期边界
 
-- `bearer_token` 用 Unicode 空白做 trim，比 PHP 版的 ASCII 空白面略宽；多接受的输入仍须完整验签
-- 过期判定边界与 PHP 版相差 1 秒：`jsonwebtoken` 在 `exp < now - leeway` 判过期，PHP `firebase/php-jwt` 为 `now - leeway >= exp`——`exp == now - leeway` 时 Rust 放行、PHP 过期（窗口 1 秒，其余行为一致）
+- `bearer_token` 用 Unicode 空白做 trim（面略宽于 ASCII）；多接受的输入仍须完整验签
+- 过期判定为严格小于：`exp < now - leeway` 时判过期——即 `exp == now - leeway` 的边界瞬间仍放行（1 秒级的边界窗口）
 
 ## 项目宠物
 

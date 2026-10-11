@@ -1,5 +1,5 @@
 // Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz
-//! actix-web integration (App::wrap middleware; mirrors the PHP Webman middleware).
+//! actix-web integration (App::wrap middleware).
 
 use std::sync::Arc;
 

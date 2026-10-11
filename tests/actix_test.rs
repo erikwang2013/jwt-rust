@@ -102,6 +102,28 @@ async fn expired_token_is_401_with_message() {
 }
 
 #[actix_web::test]
+async fn blacklisted_token_is_401_with_message() {
+    let a = std::sync::Arc::new(auth(vec![]));
+    let app = test::init_service(
+        App::new()
+            .wrap(Jwt::new(a.clone()))
+            .route("/api/me", web::get().to(me)),
+    )
+    .await;
+    // 适配层黑名单存储接线 e2e：先拉黑，再走真实请求路径 → 401 具体文案
+    let token = a.jwt().encode(&json!({"user_id": 7}), None).unwrap();
+    assert!(a.jwt().blacklist(&token).unwrap());
+    let req = test::TestRequest::get()
+        .uri("/api/me")
+        .insert_header(("Authorization", format!("Bearer {token}")))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), 401);
+    let body: serde_json::Value = test::read_body_json(resp).await;
+    assert_eq!(body["msg"], "Token has been blacklisted");
+}
+
+#[actix_web::test]
 async fn unmatched_path_is_401_with_wrap() {
     let a = std::sync::Arc::new(auth(vec![]));
     let app = test::init_service(

@@ -9,12 +9,25 @@ use super::sanitize_key_sha256;
 use crate::error::JwtError;
 use crate::storage::TokenStorage;
 
+/// 建连与读写超时预算（对齐 memcached 驱动的 1s）：redis 同步连接默认无读超时，
+/// 对端 SYN 黑洞/半开连接时会无限阻塞——持锁的 with_conn 会因此梗死整个驱动
+const IO_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1);
+
 /// Redis 黑名单（SETEX + EXISTS；键：hex jti 原样 / 其他 sha256；懒连接、出错置空重建）
 pub struct RedisTokenStorage {
     client: redis::Client,
     prefix: String,
     // ponytail: 单连接 + Mutex 串行化，高并发下换连接池（r2d2）
     conn: Mutex<Option<redis::Connection>>,
+}
+
+/// 手写 Debug（redis::Connection 非 Debug）：只列安全字段，下游组合时不泄连接内部
+impl std::fmt::Debug for RedisTokenStorage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RedisTokenStorage")
+            .field("prefix", &self.prefix)
+            .finish_non_exhaustive()
+    }
 }
 
 impl RedisTokenStorage {
@@ -66,13 +79,17 @@ impl RedisTokenStorage {
         if guard.is_none() {
             let conn = self
                 .client
-                .get_connection()
+                .get_connection_with_timeout(IO_TIMEOUT)
                 .map_err(|e| JwtError::storage(format!("Redis connection failed: {e}")))?;
+            conn.set_read_timeout(Some(IO_TIMEOUT))
+                .map_err(|e| JwtError::storage(format!("Redis setup failed: {e}")))?;
+            conn.set_write_timeout(Some(IO_TIMEOUT))
+                .map_err(|e| JwtError::storage(format!("Redis setup failed: {e}")))?;
             *guard = Some(conn);
         }
         let result = f(guard.as_mut().expect("just ensured"));
         if result.is_err() {
-            *guard = None; // 出错置空，下次重建（对应 PHP 的 $this->redis = null）
+            *guard = None; // 出错置空，下次调用重建连接
         }
         result.map_err(|e| JwtError::storage(format!("Redis {op} failed: {e}")))
     }
@@ -110,12 +127,27 @@ mod tests {
         }
     }
 
+    /// 服务不可达时显式失败：静默 skip 会给出假绿（CI 已配 service 容器，本地无服务请显式跳过）
+    macro_rules! svc_or_skip {
+        ($s:expr) => {
+            match $s {
+                Some(s) => s,
+                None => {
+                    if std::env::var_os("JWT_TEST_SKIP_SERVICES").is_some() {
+                        eprintln!("skip: redis 不可用（JWT_TEST_SKIP_SERVICES 已设）");
+                        return;
+                    }
+                    panic!(
+                        "redis 127.0.0.1:6379 不可用：本测试需要真实服务（设 JWT_TEST_SKIP_SERVICES=1 跳过）"
+                    );
+                }
+            }
+        };
+    }
+
     #[test]
     fn roundtrip_when_redis_available() {
-        let Some(s) = storage() else {
-            eprintln!("skip: redis 不可用");
-            return;
-        };
+        let s = svc_or_skip!(storage());
         let jti = format!("t{}", std::process::id());
         s.blacklist(&jti, now_secs() + 60).unwrap();
         assert!(s.is_blacklisted(&jti).unwrap());
@@ -131,10 +163,7 @@ mod tests {
 
     #[test]
     fn expired_ttl_is_noop() {
-        let Some(s) = storage() else {
-            eprintln!("skip: redis 不可用");
-            return;
-        };
+        let s = svc_or_skip!(storage());
         assert!(s.blacklist("x", 1).unwrap());
     }
 
@@ -142,6 +171,7 @@ mod tests {
     fn unreachable_server_is_storage_error_not_panic() {
         let s =
             RedisTokenStorage::new(Some("127.0.0.1:1".into()), "jwt_rust_test:".into()).unwrap();
+        let t0 = std::time::Instant::now();
         assert!(!s.is_available());
         for _ in 0..2 {
             // 第二次证明可重试、不卡死
@@ -149,6 +179,12 @@ mod tests {
             assert!(matches!(e, JwtError::Storage(_)), "got {e:?}");
             assert!(e.to_string().contains("Redis connection failed"), "got {e}");
         }
+        // 回归锁：建连/重建不得落到 OS 默认超时（分钟级）——1s 预算下 3 次建连远小于 5s
+        assert!(
+            t0.elapsed() < std::time::Duration::from_secs(5),
+            "took {:?}",
+            t0.elapsed()
+        );
     }
 
     fn now_secs() -> i64 {

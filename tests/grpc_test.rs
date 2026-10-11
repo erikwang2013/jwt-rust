@@ -43,6 +43,23 @@ fn valid_token_in_metadata_passes_and_injects_claims() {
 }
 
 #[test]
+fn blacklisted_token_is_unauthenticated_with_message() {
+    let (auth, mut ic) = setup();
+    // 适配层黑名单存储接线 e2e：先拉黑，再走拦截器 → Unauthenticated 具体文案
+    let token = auth
+        .jwt()
+        .encode(&serde_json::json!({"user_id": 7}), None)
+        .unwrap();
+    assert!(auth.jwt().blacklist(&token).unwrap());
+    let mut req = tonic::Request::new(());
+    req.metadata_mut()
+        .insert("authorization", format!("Bearer {token}").parse().unwrap());
+    let status = ic.call(req).unwrap_err();
+    assert_eq!(status.code(), tonic::Code::Unauthenticated);
+    assert_eq!(status.message(), "Token has been blacklisted");
+}
+
+#[test]
 fn expired_token_is_unauthenticated_with_message() {
     let (_, mut ic) = setup();
     let n = std::time::SystemTime::now()

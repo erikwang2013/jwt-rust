@@ -92,6 +92,23 @@ async fn filter_blocks_passes_and_attaches_payload() {
 }
 
 #[tokio::test]
+async fn blacklisted_token_aborts_401() {
+    let a = auth(vec![]);
+    let f = JwtFilter::new(a.clone());
+    // 适配层黑名单存储接线 e2e：先拉黑，再走 filter → abort 401 具体文案
+    let token = a.jwt().encode(&json!({"user_id": 7}), None).unwrap();
+    assert!(a.jwt().blacklist(&token).unwrap());
+    let mut ctx = context("/api/me", Some(&format!("Bearer {token}")));
+    ctx.dispatch(cache(), TTL, &[&f], &Noop).await.unwrap();
+    assert!(ctx.is_aborted());
+    let resp = ctx.into_response();
+    assert_eq!(resp.status(), 401);
+    let body = axum::body::to_bytes(resp.into_body(), 4096).await.unwrap();
+    let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(v["msg"], "Token has been blacklisted");
+}
+
+#[tokio::test]
 async fn except_path_skips_and_expired_token_is_401() {
     let a = auth(vec!["/api/login".into()]);
     let f = JwtFilter::new(a.clone());

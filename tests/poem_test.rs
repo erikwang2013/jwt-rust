@@ -108,6 +108,24 @@ async fn route_with_middleware_documented_usage() {
 }
 
 #[tokio::test]
+async fn blacklisted_token_is_401_with_message() {
+    let a = Arc::new(auth(vec![]));
+    let ep = JwtMiddleware::new(a.clone()).transform(Echo);
+    // 适配层黑名单存储接线 e2e：先拉黑，再走端点 → 401 具体文案
+    let token = a.jwt().encode(&json!({"user_id": 7}), None).unwrap();
+    assert!(a.jwt().blacklist(&token).unwrap());
+    let req = Request::builder()
+        .uri_str("/api/me")
+        .header("Authorization", format!("Bearer {token}"))
+        .finish();
+    let resp = ep.call(req).await.unwrap();
+    assert_eq!(resp.status(), poem::http::StatusCode::UNAUTHORIZED);
+    let body = resp.into_body().into_string().await.unwrap();
+    let v: serde_json::Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(v["msg"], "Token has been blacklisted");
+}
+
+#[tokio::test]
 async fn expired_token_is_401_with_message() {
     let a = Arc::new(auth(vec![]));
     let ep = JwtMiddleware::new(a.clone()).transform(Echo);

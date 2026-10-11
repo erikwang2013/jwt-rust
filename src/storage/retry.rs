@@ -1,13 +1,14 @@
 // Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz
-//! Storage retry decorator (mirrors the PHP RetryTokenStorage).
+//! Storage retry decorator: fixed-delay retries with typed error pass-through.
 
 use std::time::Duration;
 
 use super::TokenStorage;
 use crate::error::JwtError;
 
-/// 存储操作失败自动重试（对应 PHP RetryTokenStorage）；
-/// Config 错误不重试，重试耗尽抛 Storage 错误并带操作名
+/// 存储操作失败自动重试；
+/// Config 错误不重试且保持原类型返回，其余重试耗尽抛 Storage 错误并带操作名
+#[derive(Debug)]
 pub struct RetryTokenStorage<S: TokenStorage> {
     inner: S,
     max_retries: u32,
@@ -17,9 +18,9 @@ pub struct RetryTokenStorage<S: TokenStorage> {
 impl<S: TokenStorage> RetryTokenStorage<S> {
     /// Wrap `inner` with fixed-delay retries.
     ///
-    /// `max_retries` is the total number of attempts (matching the PHP
-    /// `$maxRetries` loop), not additional retries; values below 1 are
-    /// clamped to 1. `retry_delay_ms` is the fixed delay between attempts.
+    /// `max_retries` is the total number of attempts, not additional
+    /// retries; values below 1 are clamped to 1. `retry_delay_ms` is the
+    /// fixed delay between attempts.
     pub fn new(inner: S, max_retries: u32, retry_delay_ms: u64) -> Self {
         Self {
             inner,
@@ -45,7 +46,7 @@ impl<S: TokenStorage> RetryTokenStorage<S> {
             match f() {
                 Ok(v) => return Ok(v),
                 Err(e) => {
-                    // Config 错误立即放弃重试（对齐 PHP CONFIG_ERROR 分支）
+                    // 配置错误立即放弃重试（重试无济于事）
                     if matches!(e, JwtError::Config(_)) || attempt == attempts {
                         last = Some(e);
                         break;
@@ -54,6 +55,10 @@ impl<S: TokenStorage> RetryTokenStorage<S> {
                     std::thread::sleep(Duration::from_millis(self.retry_delay_ms));
                 }
             }
+        }
+        // Config 错误保持原类型：降级成 Storage 会让 fail_open 把它当存储故障放行、错误码从 5 变 4
+        if let Some(e @ JwtError::Config(_)) = last {
+            return Err(e);
         }
         let detail = last.map(|e| e.to_string()).unwrap_or_default();
         Err(JwtError::storage(format!(
@@ -67,7 +72,7 @@ impl<S: TokenStorage> TokenStorage for RetryTokenStorage<S> {
         self.retry("blacklist", || self.inner.blacklist(jti, expire_time))
     }
     fn is_blacklisted(&self, jti: &str) -> Result<bool, JwtError> {
-        self.retry("isBlacklisted", || self.inner.is_blacklisted(jti))
+        self.retry("is_blacklisted", || self.inner.is_blacklisted(jti))
     }
     fn cleanup(&self) -> Result<bool, JwtError> {
         self.retry("cleanup", || self.inner.cleanup())
@@ -134,7 +139,8 @@ mod tests {
             err: JwtError::Config("bad".into()),
         };
         let s = RetryTokenStorage::new(inner, 3, 1);
-        let _ = s.blacklist("j", 9999999999);
+        let e = s.blacklist("j", 9999999999).unwrap_err();
+        assert!(matches!(e, JwtError::Config(_)), "got {e:?}"); // 类型不得被降级为 Storage
         assert_eq!(inner_calls(&s), 1); // 只尝试一次
     }
 

@@ -44,7 +44,7 @@ pub(crate) fn now() -> i64 {
         .unwrap_or(0)
 }
 
-/// 从 "Bearer xxx" 头值取令牌；前缀大小写不敏感、容忍多余空白（同 PHP bearerToken）
+/// 从 "Bearer xxx" 头值取令牌；前缀大小写不敏感、容忍多余空白
 pub fn bearer_token(header_value: &str) -> Option<String> {
     let (prefix, rest) = header_value.split_at_checked(7)?;
     if prefix.eq_ignore_ascii_case("Bearer ") {
@@ -56,15 +56,23 @@ pub fn bearer_token(header_value: &str) -> Option<String> {
     None
 }
 
+/// JWT 内核：签发（encode）/ 校验（decode）/ 刷新 / 黑名单。持有密钥材料，故有意不实现 Debug。
 pub struct Jwt {
     config: JwtConfig,
     algorithm: Algorithm,
     encoding_key: EncodingKey,
     decoding_key: DecodingKey,
     storage: Arc<dyn TokenStorage>,
+    // 预构建：Validation 与实例同生命周期，decode 只取引用；也免去每请求重设 jsonwebtoken 默认值
+    validation: Validation,
 }
 
 const SUPPORTED_ALGORITHMS: [&str; 4] = ["HS256", "HS384", "HS512", "RS256"];
+
+/// leeway 上限（秒，README 建议值）。jsonwebtoken 内部是 `now - leeway` 的无保护 u64 减法：
+/// 超过当前时间戳（约 56 年）才溢出，但一旦发生就是请求路径 panic（debug）/全量判过期（release），
+/// 启动期按保守上限校验，把这类"单位笔误"挡在第一现场。
+const MAX_LEEWAY: u64 = 86_400;
 
 impl Jwt {
     pub fn new(config: JwtConfig, storage: Arc<dyn TokenStorage>) -> Result<Self, JwtError> {
@@ -72,6 +80,12 @@ impl Jwt {
             return Err(JwtError::config(
                 "Secret key must be at least 32 characters (256 bits)",
             ));
+        }
+        if config.leeway > MAX_LEEWAY {
+            return Err(JwtError::config(format!(
+                "Leeway must be at most {MAX_LEEWAY} seconds (got {})",
+                config.leeway
+            )));
         }
         let algorithm = match config.algorithm.as_str() {
             "HS256" => Algorithm::HS256,
@@ -90,7 +104,7 @@ impl Jwt {
                 let encoding_key = EncodingKey::from_rsa_pem(config.secret_key.as_bytes())
                     .map_err(|e| JwtError::config(format!("Invalid RSA private key: {e}")))?;
                 // DecodingKey::from_rsa_pem 不会从私钥 PEM 提取公钥分量（decode 恒 InvalidSignature）；
-                // 经 Jwk 提取公钥分量，并让"传了公钥 PEM"在启动期即报 Config（对齐 PHP 私钥配置可用）
+                // 经 Jwk 提取公钥分量；"传了公钥 PEM"在启动期即报 Config（RS256 的 secret_key 语义是私钥）
                 let jwk =
                     jsonwebtoken::jwk::Jwk::from_encoding_key(&encoding_key, Algorithm::RS256)
                         .map_err(|e| {
@@ -100,17 +114,34 @@ impl Jwt {
                     .map_err(|e| JwtError::config(format!("Invalid RSA key: {e}")))?;
                 (encoding_key, decoding_key)
             }
-            _ => (
-                EncodingKey::from_secret(config.secret_key.as_bytes()),
-                DecodingKey::from_secret(config.secret_key.as_bytes()),
-            ),
+            _ => {
+                // 把 RSA 公钥 PEM 粘进 secret_key 而忘改 algorithm 时，公钥即等价于 HMAC 密钥：
+                // 任何持有公钥者都能伪造通行令牌。RS256 分支对传公钥已 fail-closed（经 Jwk 提取公钥分量，
+                // 传公钥报 Config），这里做对称防护：HMAC 算法不接受 PEM 材料。
+                if config.secret_key.trim_start().starts_with("-----BEGIN") {
+                    return Err(JwtError::config(
+                        "PEM key configured with an HMAC algorithm; use `algorithm = \"RS256\"` for PEM keys",
+                    ));
+                }
+                (
+                    EncodingKey::from_secret(config.secret_key.as_bytes()),
+                    DecodingKey::from_secret(config.secret_key.as_bytes()),
+                )
+            }
         };
+        let mut validation = Validation::new(algorithm);
+        validation.leeway = config.leeway; // 11.1.0 默认 60，必须显式覆盖
+        validation.validate_exp = true;
+        validation.validate_nbf = true; // 默认 false，须显式开
+        validation.validate_aud = false; // iss/aud 手工比对（支持 aud 数组与自定义文案）
+        validation.required_spec_claims.clear(); // 允许无 exp 的令牌（宽松模式，兼容外部签发系统；本库签发的令牌恒有 exp）
         Ok(Self {
             config,
             algorithm,
             encoding_key,
             decoding_key,
             storage,
+            validation,
         })
     }
 
@@ -122,7 +153,7 @@ impl Jwt {
         self.storage = storage;
     }
 
-    /// 签发。默认声明（iss/aud/iat/nbf/exp/jti）覆盖用户 payload 同名字段（同 PHP array_merge 语义）；
+    /// 签发。默认声明（iss/aud/iat/nbf/exp/jti）覆盖用户 payload 中的同名字段；
     /// expire=None 时按 token_type 选择 default_expire / refresh_expire
     pub fn encode<T: Serialize>(
         &self,
@@ -138,7 +169,7 @@ impl Jwt {
         expire: Option<u64>,
         mut header: Header,
     ) -> Result<String, JwtError> {
-        header.alg = self.algorithm; // 忽略调用方指定的 alg（同 PHP unset($headers['alg'])）
+        header.alg = self.algorithm; // 调用方指定的 alg 一律覆盖为本实例算法（防算法混淆）
         let mut payload = serde_json::to_value(claims).map_err(|e| {
             log::error!("JWT encode: claims not serializable: {e}");
             JwtError::invalid("Invalid payload")
@@ -155,12 +186,18 @@ impl Jwt {
             }
         });
         let now = now();
-        let mut jti = [0u8; 16];
-        getrandom::fill(&mut jti).map_err(|e| {
+        let mut jti_bytes = [0u8; 16];
+        getrandom::fill(&mut jti_bytes).map_err(|e| {
             log::error!("JWT encode: jti generation failed: {e}");
             JwtError::invalid("Token generation failed")
         })?;
-        let jti: String = jti.iter().map(|b| format!("{b:02x}")).collect();
+        let mut jti = String::with_capacity(32);
+        {
+            use std::fmt::Write as _;
+            for b in jti_bytes {
+                let _ = write!(jti, "{b:02x}");
+            }
+        }
 
         obj.insert("iss".into(), Value::String(self.config.issuer.clone()));
         obj.insert("aud".into(), Value::String(self.config.audience.clone()));
@@ -182,15 +219,10 @@ impl Jwt {
     }
 
     pub fn decode_with(&self, token: &str, allow_refresh: bool) -> Result<Value, JwtError> {
-        let mut validation = Validation::new(self.algorithm);
-        validation.leeway = self.config.leeway; // 11.1.0 默认 60，必须显式覆盖
-        validation.validate_exp = true;
-        validation.validate_nbf = true; // 默认 false，须显式开
-        validation.validate_aud = false; // iss/aud 手工比对（支持 aud 数组，错误文案对齐 PHP）
-        validation.required_spec_claims.clear(); // PHP 允许无 exp 的令牌
+        let validation = &self.validation; // 预构建于 Jwt::new：leeway 覆盖、exp/nbf 开启、iss/aud 手工比对
 
         let data =
-            jsonwebtoken::decode::<Value>(token, &self.decoding_key, &validation).map_err(|e| {
+            jsonwebtoken::decode::<Value>(token, &self.decoding_key, validation).map_err(|e| {
                 use jsonwebtoken::errors::ErrorKind;
                 match e.kind() {
                     ErrorKind::ExpiredSignature => {
@@ -229,7 +261,7 @@ impl Jwt {
                 }
             }
             Some(v) if !v.is_null() => return Err(JwtError::invalid("Invalid jti")),
-            _ => {} // None 或 null：同 PHP isset 语义，跳过检查
+            _ => {} // None 或 null：等同缺失，跳过黑名单检查
         }
         Ok(payload)
     }
@@ -251,7 +283,7 @@ impl Jwt {
         }
         let obj = payload
             .as_object_mut()
-            .expect("decoded payload is an object");
+            .ok_or_else(|| JwtError::invalid("Invalid claims"))?;
         let old_exp = obj.get("exp").and_then(Value::as_i64).unwrap_or(0);
         if let Some(jti) = obj.get("jti").and_then(Value::as_str)
             && old_exp > now()
@@ -271,7 +303,13 @@ impl Jwt {
                 let Some(jti) = payload.get("jti").and_then(Value::as_str) else {
                     return Ok(false);
                 };
-                let exp = payload.get("exp").and_then(Value::as_i64).unwrap_or(0);
+                // 无 exp 的令牌四个驱动都会拒写（ttl ≤ 0 短路）——不得向上谎报 Ok(true) 假成功
+                let Some(exp) = payload.get("exp").and_then(Value::as_i64) else {
+                    log::error!("blacklist: token has no exp claim, cannot be recorded");
+                    return Err(JwtError::invalid(
+                        "Token has no exp claim and cannot be blacklisted",
+                    ));
+                };
                 self.storage.blacklist(jti, exp)
             }
             Err(e @ (JwtError::Blacklisted | JwtError::Expired)) => {
@@ -292,7 +330,8 @@ impl Jwt {
         }
     }
 
-    /// 只按 jti 查黑名单，不验证签名（未验证入口，任何输入不得 panic；吞错返 false 同 PHP）
+    /// 只按 jti 查黑名单，不验证签名（未验证入口，任何输入不得 panic；存储错误吞为 false——fail-open）
+    #[must_use]
     pub fn is_blacklisted(&self, token: &str) -> bool {
         match self.payload_without_validation(token) {
             Ok(p) => match p.get("jti").and_then(Value::as_str) {
@@ -334,6 +373,7 @@ impl Jwt {
         self.storage.cleanup()
     }
 
+    #[must_use]
     pub fn validate(&self, token: &str) -> bool {
         self.decode(token).is_ok()
     }
@@ -376,5 +416,7 @@ fn aud_matches(payload: &Value, expected: &str) -> bool {
     }
 }
 
+#[cfg(test)]
+mod security_tests;
 #[cfg(test)]
 mod tests;

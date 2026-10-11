@@ -7,7 +7,8 @@ use std::path::Path;
 
 use crate::error::JwtError;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+// 不派生 Debug，改为手写实现：secret_key 是密钥材料，{:?} 进日志/panic 消息不得泄露
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct JwtConfig {
     pub secret_key: String,
@@ -77,8 +78,27 @@ impl Default for StorageConfig {
             auto_create_table: true,
             gc_probability: 0.1,
             fail_open: false,
-            servers: vec!["127.0.0.1:11211".into()],
+            // 空列表 = 各驱动按自身默认回落（redis → 127.0.0.1:6379、memcached → 127.0.0.1:11211）。
+            // 不要写死端口默认值：固定 11211 会让未配 servers 的 redis 驱动错连
+            servers: vec![],
         }
+    }
+}
+
+impl std::fmt::Debug for JwtConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JwtConfig")
+            .field("secret_key", &"[redacted]")
+            .field("algorithm", &self.algorithm)
+            .field("issuer", &self.issuer)
+            .field("audience", &self.audience)
+            .field("leeway", &self.leeway)
+            .field("default_expire", &self.default_expire)
+            .field("refresh_expire", &self.refresh_expire)
+            .field("storage", &self.storage)
+            .field("advanced", &self.advanced)
+            .field("middleware", &self.middleware)
+            .finish()
     }
 }
 
@@ -94,7 +114,7 @@ impl Default for AdvancedConfig {
 }
 
 impl JwtConfig {
-    /// Load configuration from process environment variables (JWT_* names identical to the PHP version).
+    /// Load configuration from process environment variables (`JWT_*` names).
     pub fn from_env() -> Self {
         Self::from_map(std::env::vars())
     }
@@ -137,7 +157,7 @@ impl JwtConfig {
     }
 
     /// Load configuration from a TOML file (keys are this struct's fields).
-    /// Unknown keys are ignored (mirrors PHP array config).
+    /// Unknown keys are ignored (lenient parsing).
     pub fn from_toml_file(path: &Path) -> Result<Self, JwtError> {
         let text = std::fs::read_to_string(path).map_err(|e| {
             JwtError::config(format!("Cannot read config file: {} ({e})", path.display()))
@@ -167,8 +187,7 @@ impl JwtConfig {
     }
 }
 
-/// Replicates PHP filter_var(..., FILTER_VALIDATE_BOOLEAN) without FILTER_NULL_ON_FAILURE:
-/// true for 1/true/yes/on (trimmed, case-insensitive).
+/// 宽松布尔解析：1 / true / yes / on（trim 后、大小写不敏感）为真，其余为假。
 fn truthy(v: &str) -> bool {
     matches!(
         v.trim().to_ascii_lowercase().as_str(),
@@ -188,7 +207,7 @@ mod tests {
     }
 
     #[test]
-    fn defaults_match_php_config_template() {
+    fn defaults_match_config_template() {
         let c = JwtConfig::from_map(map(&[]));
         assert_eq!(c.algorithm, "HS256");
         assert_eq!(c.leeway, 0);
@@ -200,6 +219,7 @@ mod tests {
         assert!(c.storage.auto_create_table);
         assert_eq!(c.storage.gc_probability, 0.1);
         assert!(!c.storage.fail_open);
+        assert!(c.storage.servers.is_empty()); // 空 = 各驱动自回落（不写死端口）
         assert_eq!(c.advanced.retry_attempts, 3);
         assert_eq!(c.advanced.retry_delay, 100);
         assert!(!c.advanced.auto_cleanup);
@@ -209,11 +229,19 @@ mod tests {
         assert_eq!(c.issuer, "");
         assert_eq!(c.audience, "");
         assert_eq!(c.storage.path, None);
-        assert_eq!(c.storage.servers, ["127.0.0.1:11211"]);
     }
 
     #[test]
-    fn env_names_are_identical_to_php() {
+    fn debug_redacts_secret_key() {
+        let c = JwtConfig::default().with_secret("super-secret-value-that-must-not-leak");
+        let dbg = format!("{c:?}");
+        assert!(!dbg.contains("super-secret-value"), "secret leaked: {dbg}");
+        assert!(dbg.contains("[redacted]"));
+        assert!(dbg.contains("algorithm")); // 其余字段照常可见
+    }
+
+    #[test]
+    fn env_names_are_stable() {
         let c = JwtConfig::from_map(map(&[
             ("JWT_SECRET_KEY", "s"),
             ("JWT_ALGORITHM", "HS512"),

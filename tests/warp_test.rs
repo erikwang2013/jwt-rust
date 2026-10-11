@@ -94,6 +94,34 @@ async fn expired_token_is_401_with_message() {
 }
 
 #[tokio::test]
+async fn blacklisted_token_is_401_with_message() {
+    let a = auth(vec![]);
+    let route = warp::path!("me")
+        .and(with_jwt(a.clone()))
+        .map(|_p: JwtPayload| "ok")
+        .recover(|rej: warp::Rejection| async move {
+            match rej.find::<JwtRejection>() {
+                Some(j) => Ok(warp::reply::with_status(
+                    warp::reply::json(&j.body),
+                    j.status,
+                )),
+                None => Err(rej),
+            }
+        });
+    // 适配层黑名单存储接线 e2e：先拉黑，再走过滤器 → 401 具体文案
+    let token = a.jwt().encode(&json!({"user_id": 7}), None).unwrap();
+    assert!(a.jwt().blacklist(&token).unwrap());
+    let resp = warp::test::request()
+        .path("/me")
+        .header("Authorization", format!("Bearer {token}"))
+        .reply(&route)
+        .await;
+    assert_eq!(resp.status(), 401);
+    let v: serde_json::Value = serde_json::from_slice(resp.body()).unwrap();
+    assert_eq!(v["msg"], "Token has been blacklisted");
+}
+
+#[tokio::test]
 async fn except_path_is_explicit_rejection() {
     let a = auth(vec!["/public".into()]);
     let route = warp::path!("public")

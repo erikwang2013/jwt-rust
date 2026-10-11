@@ -66,6 +66,21 @@ fn guard_flow() {
 }
 
 #[test]
+fn blacklisted_token_is_401_with_message() {
+    let (client, auth) = client();
+    // 适配层黑名单存储接线 e2e：先拉黑，再走守卫 → 401 具体文案
+    let token = auth.jwt().encode(&json!({"user_id": 7}), None).unwrap();
+    assert!(auth.jwt().blacklist(&token).unwrap());
+    let resp = client
+        .get("/me")
+        .header(Header::new("Authorization", format!("Bearer {token}")))
+        .dispatch();
+    assert_eq!(resp.status(), Status::Unauthorized);
+    let v: serde_json::Value = serde_json::from_str(&resp.into_string().unwrap()).unwrap();
+    assert_eq!(v["msg"], "Token has been blacklisted");
+}
+
+#[test]
 fn expired_token_is_401_with_message() {
     let (client, _) = client();
     let n = std::time::SystemTime::now()

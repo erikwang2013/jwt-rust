@@ -60,7 +60,7 @@ The core layer depends on no framework types; every external dependency (configu
 jwt-rust/
 ├── src/                               Core and the nine integration paths
 │   ├── lib.rs                         Crate root: public exports + feature-gated modules
-│   ├── error.rs                       Core: the JwtError hierarchy (error codes 1-6 map one-to-one to the PHP version)
+│   ├── error.rs                       Core: the JwtError hierarchy (stable error codes 1-6)
 │   ├── config.rs                      Core: the JwtConfig container; env vars / TOML / builder entry points
 │   ├── jwt.rs                         Core: Jwt token encode/decode, refresh, blacklist, cleanup + JwtPayload + bearer_token()
 │   ├── factory.rs                     Core: the JwtFactory factory, assembling core and storage from configuration
@@ -79,7 +79,7 @@ jwt-rust/
 │       ├── axum.rs / actix.rs / rocket.rs / poem.rs / salvo.rs / warp.rs
 │       ├── bee_rust.rs                bee-rust: a bee_router::Filter implementation
 │       └── ecat.rs → ecat/grpc.rs     e-cat: tower Layer (+ the gRPC interceptor under feature ecat-grpc)
-├── tests/                             Integration tests (29 cases): the eight framework adapters + e-cat gRPC
+├── tests/                             Integration tests (40 cases): the eight framework adapters + e-cat gRPC
 ├── examples/
 │   └── mascot.rs                      Runnable example: prints the mascot banner and the svg byte count
 ├── docs/                              Documentation and graphical assets
@@ -101,11 +101,11 @@ jwt-rust/
 cargo test --all-features
 ```
 
-**All 109 test cases pass** (79 core and storage unit tests + 29 integration tests for the eight framework adapters + 1 doc test; 1 further rocket usage-example doc test is marked `ignored`).
+**All 134 test cases pass** (93 core and storage unit tests + 40 integration tests for the eight framework adapters + 1 doc test; 1 further rocket usage-example doc test is marked `ignored`).
 
-- Core and storage unit tests: configuration loading and defaults, error levels and messages, encode/decode (including iss / aud / leeway / expiry), refresh rotation, blacklist, atomic writes and probabilistic GC across the four storage drivers, except whitelist matching, mascot banner
-- Framework integration tests: per framework, verify "no token → unified 401 JSON body / valid token passes and payload is retrievable / except whitelist / expired token → 401 with a specific message", and pin down each one's 404 and response-header semantics; e-cat additionally covers the gRPC interceptor with and without a token in the metadata
-- Tests for the redis / memcached drivers require a local service: when one is available they run full round-trip assertions (including SETEX TTL and the >30-day TTL protocol pitfall); when not, they print skip instead of failing
+- Core and storage unit tests: configuration loading and defaults, error levels and messages, encode/decode (including iss / aud / leeway / expiry), refresh rotation, blacklist, atomic writes and probabilistic GC across the four storage drivers, except whitelist matching, mascot banner; security negative-path regression locks (tampered signature / algorithm confusion / `alg:"none"` / future nbf / exp-less logout / leeway ceiling / PEM misconfiguration / storage-directory permissions)
+- Framework integration tests: per framework, verify "no token → unified 401 JSON body / valid token passes and payload is retrievable / except whitelist / expired token → 401 with a specific message / **blacklisted token → 401**", and pin down each one's 404 and response-header semantics; e-cat additionally covers the gRPC interceptor with and without a token in the metadata; axum also covers refresh-token misuse and both fail_open branches end to end
+- Tests for the redis / memcached drivers require a local / CI service: when one is available they run full round-trip assertions (including SETEX TTL, the >30-day TTL protocol pitfall and single-dead-server degradation); when not, the test **fails outright** with a hint instead of silently skipping — no more false green locally; set `JWT_TEST_SKIP_SERVICES=1` to skip explicitly on a machine without the services
 
 ## Architecture Design
 
@@ -117,7 +117,7 @@ cargo test --all-features
 | **Integration layer** | Plain Rust guards requests with `native::Guard`; the eight frameworks integrate through their idiomatic mechanisms (tower Layer / middleware / filter / request guard) | The nine integration paths are unaware of each other; the core never depends back on any of them |
 | **Framework-agnostic core** | Token encode/decode, refresh, blacklist, error levels, configuration and factory | Zero framework types; depends only on `jsonwebtoken` and the `log` facade |
 | **Pluggable storage layer** | Blacklist reads and writes, expiry reclamation, failure policy | Knows only the `TokenStorage` trait; driver and `fail_open` are decided by configuration |
-| **Underlying dependencies** | JWT codec engine and logging | With no logger installed the `log` macros are zero-cost and silent, equivalent to PHP's NullLogger |
+| **Underlying dependencies** | JWT codec engine and logging | With no logger installed the `log` macros are zero-cost and silent (no output at all) |
 
 ## Feature Design
 
@@ -140,7 +140,7 @@ A token passes through seven stages from issuance to destruction: **issue → de
 - Automatic retry when storage operations fail; configurable allow or deny on failure
 - Usable directly from plain Rust: `native::Guard` request guard + TOML / environment variable configuration, zero framework dependencies
 - Deep integration with eight frameworks: middleware / filter / request guard, wired up the way each framework expects
-- e-cat gRPC interceptor (no counterpart in the PHP version): a tonic `InterceptorLayer` mounted on the service, sharing the same validation and blacklist as the HTTP layer
+- e-cat gRPC interceptor: a tonic `InterceptorLayer` mounted on the service, sharing the same validation and blacklist as the HTTP layer
 
 ## Installation
 
@@ -179,7 +179,7 @@ No feature is enabled by default (`default = []`): without a feature only the fr
 
 ## Core API
 
-`JwtFactory` is the assembly entry point for the core, and `Jwt` is the token API itself (corresponding to the PHP version's `JWTFactory` / `JWT`; the convenience wrapper and automatic header extraction live at the same level):
+`JwtFactory` is the assembly entry point for the core, and `Jwt` is the token API itself (the convenience wrapper and automatic header extraction live at the same level):
 
 ```rust
 use std::path::Path;
@@ -222,6 +222,8 @@ let new_token = jwt.refresh(&refresh, None)?;
 jwt.blacklist(&token)?;
 
 // Check whether a token is blacklisted (no signature verification, lookup by jti only)
+// Note: unverified entry point, and it returns false on any storage failure (fail-open) —
+// the opposite of decode()'s fail-closed default
 if jwt.is_blacklisted(&token) { /* ... */ }
 
 // Clean up expired blacklist entries; best run from a scheduled task
@@ -245,8 +247,9 @@ The core depends on no framework types; a plain Rust project is two steps away.
 **1. Prepare the configuration**: environment variables (`JWT_*`, see [Configuration Reference](#configuration-reference)) or a TOML file:
 
 ```toml
-# At least 32 characters (256 bits)
-secret_key = "replace-with-a-key-of-at-least-32-chars"
+# At least 32 characters (256 bits); generate one with `openssl rand -hex 32`.
+# The placeholder below deliberately fails the length check, so a copy-paste cannot ship as-is.
+secret_key = "CHANGE_ME_openssl_rand_hex_32"
 algorithm = "HS256"
 
 [middleware]
@@ -324,7 +327,7 @@ use jwt_rust::integrations::JwtAuth;
 use jwt_rust::jwt::JwtPayload;
 
 let auth = JwtAuth::from_config(JwtConfig {
-    secret_key: "0123456789abcdef0123456789abcdef".into(),
+    secret_key: "CHANGE_ME_openssl_rand_hex_32".into(),
     middleware: MiddlewareConfig { except: vec!["/api/login".into()] },
     ..Default::default()
 })?;
@@ -343,7 +346,7 @@ let app = JwtLayer::new(Arc::new(auth)).attach(app);
 
 **Notes:**
 
-- `attach` (internally `Router::route_layer`) only applies to registered routes — unmatched paths stay 404 and skip authentication; switching to `Router::layer(JwtLayer::new(...))` applies the layer to the fallback too, so unmatched paths answer 401 when no token is present
+- `attach` (internally `Router::route_layer`) only applies to the routes **registered at the moment `attach` is called** — **register every route first and call `attach` last**: routes added after `attach` silently skip the auth layer (documented `route_layer` behaviour); unmatched paths stay 404 and skip authentication; switching to `Router::layer(JwtLayer::new(...))` applies the layer to the fallback too, so unmatched paths answer 401 when no token is present
 - Calling `attach` on an **empty router** (no routes registered) panics (a design property of axum's `route_layer`); register at least one route before mounting
 - `nest` strips the prefix from the path the innermost layer sees, so **a layer mounted inside a nest subtree must write `except` entries as paths relative to the sub-router**
 - CORS preflight (`OPTIONS`) goes through authentication too: short-circuit preflight with an outer `CorsLayer`, or register an OPTIONS route yourself
@@ -363,7 +366,7 @@ use jwt_rust::integrations::JwtAuth;
 use jwt_rust::jwt::JwtPayload;
 
 let auth = Arc::new(JwtAuth::from_config(JwtConfig {
-    secret_key: "0123456789abcdef0123456789abcdef".into(),
+    secret_key: "CHANGE_ME_openssl_rand_hex_32".into(),
     middleware: jwt_rust::config::MiddlewareConfig { except: vec!["/api/login".into()] },
     ..Default::default()
 })?);
@@ -411,7 +414,7 @@ fn me(p: JwtGuard) -> String {
 #[rocket::launch]
 fn rocket() -> _ {
     let auth = JwtAuth::from_config(JwtConfig {
-        secret_key: "0123456789abcdef0123456789abcdef".into(),
+        secret_key: "CHANGE_ME_openssl_rand_hex_32".into(),
         ..Default::default()
     }).unwrap();
     rocket::build()
@@ -443,7 +446,7 @@ use jwt_rust::integrations::poem::JwtMiddleware;
 use jwt_rust::integrations::JwtAuth;
 
 let auth = Arc::new(JwtAuth::from_config(JwtConfig {
-    secret_key: "0123456789abcdef0123456789abcdef".into(),
+    secret_key: "CHANGE_ME_openssl_rand_hex_32".into(),
     middleware: jwt_rust::config::MiddlewareConfig { except: vec!["/api/login".into()] },
     ..Default::default()
 })?);
@@ -488,7 +491,7 @@ async fn me(depot: &mut Depot, res: &mut Response) {
 }
 
 let auth = std::sync::Arc::new(JwtAuth::from_config(JwtConfig {
-    secret_key: "0123456789abcdef0123456789abcdef".into(),
+    secret_key: "CHANGE_ME_openssl_rand_hex_32".into(),
     middleware: jwt_rust::config::MiddlewareConfig { except: vec!["/api/login".into()] },
     ..Default::default()
 })?);
@@ -522,7 +525,7 @@ use jwt_rust::integrations::JwtAuth;
 use jwt_rust::jwt::JwtPayload;
 
 let auth = Arc::new(JwtAuth::from_config(JwtConfig {
-    secret_key: "0123456789abcdef0123456789abcdef".into(),
+    secret_key: "CHANGE_ME_openssl_rand_hex_32".into(),
     ..Default::default()
 })?);
 
@@ -554,7 +557,7 @@ use jwt_rust::integrations::bee_rust::JwtFilter;
 use jwt_rust::integrations::JwtAuth;
 
 let auth = Arc::new(JwtAuth::from_config(JwtConfig {
-    secret_key: "0123456789abcdef0123456789abcdef".into(),
+    secret_key: "CHANGE_ME_openssl_rand_hex_32".into(),
     middleware: jwt_rust::config::MiddlewareConfig { except: vec!["/api/login".into()] },
     ..Default::default()
 })?);
@@ -606,11 +609,11 @@ routes.add_service(svc);
 
 ## Configuration Reference
 
-The environment variable names are character-for-character identical to the PHP version, 18 in total (read by `JwtConfig::from_env()`):
+18 environment variables in total (read by `JwtConfig::from_env()`):
 
 | Environment variable | Default | Description |
 |------|------|------|
-| `JWT_SECRET_KEY` | (required) | Signing key, at least 32 characters (256 bits); the private key PEM when using RS256 |
+| `JWT_SECRET_KEY` | (required) | Signing key, at least 32 characters (256 bits), generate with `openssl rand -hex 32`; the private key PEM when using RS256 |
 | `JWT_ALGORITHM` | `HS256` | Signing algorithm: HS256 / HS384 / HS512 / RS256 |
 | `JWT_ISSUER` | empty | Issuer identifier; empty means no validation |
 | `JWT_AUDIENCE` | empty | Audience identifier; empty means no validation (an array-valued aud in the token is matched by containment) |
@@ -629,13 +632,13 @@ The environment variable names are character-for-character identical to the PHP 
 | `JWT_AUTO_CLEANUP` | `false` | Reserved field: the Rust version does **not execute it automatically**; provided for background tasks to read |
 | `JWT_CLEANUP_INTERVAL` | `3600` | Automatic cleanup interval (seconds), same as above |
 
-Booleans follow the same parsing rules as PHP's `FILTER_VALIDATE_BOOLEAN`: `1` / `true` / `yes` / `on` (after trimming, case-insensitive) are true and anything else is false; a numeric value that fails to parse falls back to the default.
+Booleans parse leniently: `1` / `true` / `yes` / `on` (after trimming, case-insensitive) are true and anything else is false; a numeric value that fails to parse likewise falls back to the default.
 
 **TOML configuration file** (`JwtFactory::from_file()`; key names map one-to-one to the fields in the table above):
 
 ```toml
-# Signing key, at least 32 characters (256 bits)
-secret_key = "0123456789abcdef0123456789abcdef"
+# Signing key, at least 32 characters (256 bits); generate with `openssl rand -hex 32`
+secret_key = "CHANGE_ME_openssl_rand_hex_32"
 # Signing algorithm: HS256 / HS384 / HS512 / RS256
 algorithm = "HS256"
 # Issuer / audience identifier; empty means no validation
@@ -664,7 +667,8 @@ gc_probability = 0.1
 # On storage failure: false (the default) denies every token; true allows it through and logs an error
 fail_open = false
 # redis / memcached drivers: server list (host:port or a full URL; TOML only, no matching environment variable)
-servers = ["127.0.0.1:11211"]
+# When absent (empty / unset) each driver falls back to its own default: redis → 127.0.0.1:6379, memcached → 127.0.0.1:11211
+# servers = ["127.0.0.1:11211", "127.0.0.1:11212"]
 
 [advanced]
 # Retry attempts and delay (milliseconds) for failed storage operations
@@ -679,7 +683,7 @@ cleanup_interval = 3600
 except = []
 ```
 
-Unknown TOML keys are ignored (the same semantics as PHP array configuration). You can also build the config with the builder directly: `JwtConfig::default().with_secret("…").with_issuer("…")` and so on.
+Unknown TOML keys are ignored (lenient parsing: one config file can carry extra keys for other environments or versions without error). You can also build the config with the builder directly: `JwtConfig::default().with_secret("…").with_issuer("…")` and so on.
 
 **RS256 keys**: `secret_key` takes the **private key** PEM and supports both PKCS#1 (`BEGIN RSA PRIVATE KEY`) and PKCS#8 (`BEGIN PRIVATE KEY`). A public key PEM is reported as a configuration error right at assembly time (`Jwt::new` / `JwtFactory`) instead of waiting to fail signature verification at runtime — configuration errors surface at startup.
 
@@ -701,10 +705,10 @@ If a storage type is configured but its feature is not enabled (say `JWT_STORAGE
 
 **Per-driver semantics:**
 
-- `file`: `{path}/{key}.json` containing `{jti, expire_time, created_at}`; atomic writes (temp file + rename), delete-on-expiry, probabilistic GC, and `cleanup` reclaiming both expired entries and temp files left behind by crashed writes; a non-hex `jti` is transcribed to a hex filename (ruling out path traversal)
-- `redis`: `SETEX` to write, `EXISTS` to query; key = prefix + sanitized jti; only the first entry of `servers` is used, falling back to `127.0.0.1:6379` when unset; lazy connections, cleared on error and rebuilt next time; `cleanup` is empty (Redis expires automatically)
+- `file`: `{path}/{key}.json` containing `{jti, expire_time, created_at}`; atomic writes (temp file + rename), delete-on-expiry, probabilistic GC, and `cleanup` reclaiming both expired entries and temp files left behind by crashed writes; a non-hex `jti` is transcribed to a hex filename (ruling out path traversal); a **pre-existing** directory must not be writable by group/other (otherwise assembly reports a Storage error — prevents another user on a shared host from pre-creating the directory and deleting/forging entries); freshly created directories are 0700
+- `redis`: `SETEX` to write, `EXISTS` to query; key = prefix + sanitized jti; only the first entry of `servers` is used, falling back to `127.0.0.1:6379` when unset; lazy connections with 1-second connect and read/write timeouts (a SYN blackhole or half-open connection cannot block indefinitely), cleared on error and rebuilt next time; `cleanup` is empty (Redis expires automatically)
 - `database`: SQLite (rusqlite, compiled bundled); writes are idempotent upserts (`INSERT … ON CONFLICT(jti) DO UPDATE`); table names are whitelist-validated (`[A-Za-z_][A-Za-z0-9_]*`). **Limitation**: v1 is SQLite only — a single-node file database, not a networked database; MySQL / PostgreSQL and the like just implement the `TokenStorage` trait to plug in
-- `memcached`: `set` to write, a read to query; uses all of `servers`, falling back to `127.0.0.1:11211` when unset; TTLs beyond 30 days are written as absolute timestamps (the protocol pitfall fixed); key rules as for redis; `cleanup` is empty
+- `memcached`: `set` to write, a read to query; each `servers` entry gets its own connection pool (pool size 4, 1-second pool budget, concurrent read path) and keys are routed to servers by deterministic hashing — **one dead server is dropped on its own while the rest keep serving** (health-first degradation; older versions were all-or-nothing; keys held by a dropped server stay invisible until it recovers), and only when every server is unreachable does it report a Storage error; falls back to `127.0.0.1:11211` when unset; TTLs beyond 30 days are written as absolute timestamps (the protocol pitfall fixed); key rules as for redis; `cleanup` is empty
 
 ## Notes
 
@@ -743,11 +747,18 @@ When issuing tokens this plugin generates `jti` from 16 random bytes in hex (32 
 
 If the storage raises an error while `decode()` is querying the blacklist, by default it propagates `JwtError::Storage` and the adapter returns 401 — a deliberate fail-closed choice: when the revocation information cannot be trusted, do not let the request through. Businesses that value availability more can explicitly turn on `storage.fail_open`, in which case a correctly signed token is allowed through during the outage, with an error logged.
 
-Exception: **the read path of the file driver** silently treats a file read error / corrupt entry as "not blacklisted" (aligned with the PHP version's `@file_get_contents` semantics), so fail-closed does not apply there; the driver logs a warn message to help troubleshooting.
+Exception: **the read path of the file driver** silently treats a file read error / corrupt entry as "not blacklisted" — an availability-first trade-off (a read error is not a confirmable blacklisting; this driver prefers an accidental allow over an indiscriminate denial), so fail-closed does not apply there; the driver logs a warn message to help troubleshooting.
+
+### file Driver: Directory Location and Permissions
+
+The default directory is `jwt_blacklist` under the **system temp directory** (override with `JWT_STORAGE_PATH` / `storage.path`; an empty env value counts as unset, and TOML `path = ""` is treated the same way). Two reminders:
+
+- Temp directories (usually tmpfs) are **wiped on reboot**, taking the blacklist with them — logged-out tokens come back to life; point `JWT_STORAGE_PATH` at a persistent directory in production
+- At assembly time a **pre-existing** directory is validated: if it is writable by group/other (someone else could delete or forge blacklist entries) or not writable by this process, construction fails with a Storage error; check with `chmod 700 <dir>`
 
 ### Storage Drivers Are Synchronous I/O (async Runtime Notes)
 
-All four storage drivers (file / redis / database / memcached) are **synchronous blocking I/O**, and the `TokenStorage` trait methods all have synchronous signatures (matching the PHP version). In an async runtime such as axum / actix-web, the blacklist lookup inside `decode()` is a **synchronous call per request**: every token with a `jti` occupies a worker thread for one storage query while it is validated (tokens without a `jti` skip that lookup). When a storage error enters `RetryTokenStorage` for a retry, the wait is `std::thread::sleep`, blocking for at worst `retry_delay × (retry_attempts − 1)` (`retry_delay` defaults to 100ms and `retry_attempts` to 3, i.e. two waits of about 200ms in total); the backend's own connection / lock timeouts stack on top of that (for example the 1-second connect timeout of memcached).
+All four storage drivers (file / redis / database / memcached) are **synchronous blocking I/O**, and the `TokenStorage` trait methods all have synchronous signatures. In an async runtime such as axum / actix-web, the blacklist lookup inside `decode()` is a **synchronous call per request**: every token with a `jti` occupies a worker thread for one storage query while it is validated (tokens without a `jti` skip that lookup). When a storage error enters `RetryTokenStorage` for a retry, the wait is `std::thread::sleep`, blocking for at worst `retry_delay × (retry_attempts − 1)` (`retry_delay` defaults to 100ms and `retry_attempts` to 3, i.e. two waits of about 200ms in total); the backend's own connection / lock timeouts stack on top of that (redis gets 1-second connect and read/write timeouts; memcached gets a 1-second pool budget — its sockets carry no read/write timeout, so a read on a half-open connection can block for a long time).
 
 For most deployments this is a non-issue — redis / memcached lookups are sub-millisecond, and file / database (SQLite) is perfectly adequate at low concurrency. Under high concurrency or with slow storage you can:
 
@@ -764,11 +775,15 @@ When `refresh()` is called without an expiry it uses the configured `refresh_exp
 
 ### Refresh Is Not Atomic, and Refresh Tokens Without exp
 
-The "reissue + put the old jti in the blacklist" of `refresh()` is not an atomic operation: within the concurrency window the same refresh token can mint one valid new token per racer (the PHP version is not atomic either); the old jti enters the blacklist immediately on reissue, but the new tokens already handed out are unaffected. Separately, a refresh token issued externally and **carrying no `exp`** will not have its old copy written to the blacklist after a refresh (there is no way to know when to reclaim it), i.e. it cannot be revoked — tokens this plugin issues itself always have an `exp` and are unaffected.
+The "reissue + put the old jti in the blacklist" of `refresh()` is not an atomic operation: within the concurrency window the same refresh token can mint one valid new token per racer; the old jti enters the blacklist immediately on reissue, but the new tokens already handed out are unaffected. Separately, a refresh token issued externally and **carrying no `exp`** will not have its old copy written to the blacklist after a refresh (there is no way to know when to reclaim it), i.e. it cannot be revoked — tokens this plugin issues itself always have an `exp` and are unaffected.
+
+The same boundary applies to logout: `blacklist()` on a token **without `exp`** returns an explicit `Err` (all four drivers refuse to write entries with ttl ≤ 0, and an entry that cannot take effect is never reported as success); on a token **without `jti`** it returns `Ok(false)` (nothing to record).
+
+One more note: `refresh()` writes the old token to the blacklist only while it is **not yet expired** (`exp > now`); if the old token is past `exp` but still inside the `leeway` grace window, the refresh does not blacklist it and it can be reused within that window (no such window when `leeway = 0`).
 
 ### Cleanup in Long-Running Processes
 
-`auto_cleanup` **is not executed automatically** in the Rust version (there is no counterpart to PHP's `register_shutdown_function`); the field is kept so background tasks can read it. Call `jwt.cleanup()` periodically from a background task, per your runtime:
+`auto_cleanup` **is not executed automatically** (the library ships no built-in timer); the field is kept so background tasks can read it. Call `jwt.cleanup()` periodically from a background task, per your runtime:
 
 **tokio task:**
 
@@ -789,18 +804,22 @@ tokio::spawn(async move {
 
 For a non-hex `jti` the file driver does a byte-by-byte hex transcription (doubling the length) and first writes to a temp name `{transcription}.json.tmp.{8 random hex digits}` (13 bytes longer than the final name); when the filename exceeds the common filesystem's `NAME_MAX` (255 bytes) it reports a Storage error — which converts to: a non-hex `jti` longer than 118 bytes fails; ordinary inputs such as an external UUID (36 characters → 72 bytes) are safe; for very long external jti values, switch to the redis / database drivers (key length is not limited by the filesystem).
 
-### Don't Set JWT_LEEWAY Too High
+For redis / memcached, an **all-hex** `jti` longer than 64 characters is likewise digested to sha256 (key length is capped at 64 characters) — the memcached protocol caps keys at 250 bytes, and this rule keeps oversized external jtis safely inside it.
 
-Keep `JWT_LEEWAY` ≤ 86400. Too large a leeway makes `jsonwebtoken` internals underflow integers and panic in debug builds; a release build wraps around into "everything is expired" (fail-closed, denying every token). Neither is the running shape you want.
+In the file driver an all-hex `jti` is used as the filename verbatim (no transcription doubling): beyond roughly 237 bytes it likewise hits `NAME_MAX`.
+
+### JWT_LEEWAY Has a Ceiling
+
+`JWT_LEEWAY` is capped at 86400 seconds (1 day); anything above that is rejected at assembly time (`Jwt::new` / `JwtFactory`) as a configuration error. Background: `jsonwebtoken` compares `exp` against `now - leeway` with an unchecked integer subtraction, so an extreme leeway (beyond the current timestamp, roughly 56 years — e.g. seconds written as milliseconds/nanoseconds) underflows and panics in debug builds, or wraps into "everything is expired" in release builds; startup validation catches such unit mistakes at the first scene.
 
 ### iat Is Not Validated
 
-`iat` (issued-at) is written but not validated: a token with an `iat` in the future is still allowed through (matching firebase/php-jwt 6.9+ behaviour when `nbf` is present — tokens this plugin issues always have an `nbf` that participates in validation, so only externally issued tokens without `nbf` reach that difference).
+`iat` (issued-at) is written but not validated: a token with an `iat` in the future is still allowed through (validation keys off `exp` / `nbf`; tokens this plugin issues always carry an `nbf` that participates in validation, so only externally issued tokens without `nbf` reach that latitude).
 
 ### 401 Messages and the Expiry Boundary
 
-- `bearer_token` trims with Unicode whitespace, slightly wider than the ASCII whitespace of the PHP version; any extra input accepted still has to verify fully
-- The expiry boundary differs from the PHP version by 1 second: `jsonwebtoken` calls a token expired when `exp < now - leeway`, while PHP's `firebase/php-jwt` uses `now - leeway >= exp` — at `exp == now - leeway` Rust allows it through and PHP considers it expired (a 1-second window; everything else behaves the same)
+- `bearer_token` trims with Unicode whitespace (slightly wider than ASCII); any extra input accepted still has to verify fully
+- The expiry check uses strict less-than: a token is expired when `exp < now - leeway` — at the boundary instant `exp == now - leeway` it is still allowed (a 1-second boundary window)
 
 ## Project Mascot
 
