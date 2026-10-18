@@ -858,6 +858,18 @@ Runnable example (prints the banner, main figure, and 12 expression byte counts)
 cargo run --example mascot
 ```
 
+## Project Mascot Expressions · Kee 钥匙小卫
+
+| **Smile** `:emoji-smile:` | **Joy** `:emoji-joy:` | **Cry** `:emoji-cry:` | **Depressed** `:emoji-depressed:` | **Terrified** `:emoji-terrified:` | **Angry** `:emoji-angry:` |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| ![Smile](./docs/pet-expressions/smile.svg) | ![Joy](./docs/pet-expressions/joy.svg) | ![Cry](./docs/pet-expressions/cry.svg) | ![Depressed](./docs/pet-expressions/depressed.svg) | ![Terrified](./docs/pet-expressions/terrified.svg) | ![Angry](./docs/pet-expressions/angry.svg) |
+
+| **Coquettish** `:emoji-coquettish:` | **Cute** `:emoji-cute:` | **Pleasing** `:emoji-pleasing:` | **Knocking** `:emoji-knocking:` | **Facepalm** `:emoji-facepalm:` | **Tongue** `:emoji-tongue:` |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| ![Coquettish](./docs/pet-expressions/coquettish.svg) | ![Cute](./docs/pet-expressions/cute.svg) | ![Pleasing](./docs/pet-expressions/pleasing.svg) | ![Knocking](./docs/pet-expressions/knocking.svg) | ![Facepalm](./docs/pet-expressions/facepalm.svg) | ![Tongue](./docs/pet-expressions/tongue.svg) |
+
+> 12 animated forms: smile / joy / cry / depressed / terrified / angry / coquettish / cute / pleasing / knocking / facepalm / tongue. Each SVG carries its own expression, emotion effects and motion, and respects `prefers-reduced-motion`.
+
 ## Open Source is Not Easy, Your Support is Welcome
 
 | WeChat | Alipay |

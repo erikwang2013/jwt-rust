@@ -93,6 +93,7 @@ impl Expression {
     ];
 
     /// 英文标识，与 SVG 文件名一致。
+    #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Self::Smile => "smile",
@@ -111,6 +112,7 @@ impl Expression {
     }
 
     /// 中文名，与 README 的表情表一致。
+    #[must_use]
     pub const fn cn_name(self) -> &'static str {
         match self {
             Self::Smile => "笑",
@@ -129,6 +131,7 @@ impl Expression {
     }
 
     /// 对应的 SVG 形象（编译期内嵌 docs/pet-expressions/*.svg）。
+    #[must_use]
     pub const fn svg(self) -> &'static str {
         match self {
             Self::Smile => include_str!("../docs/pet-expressions/smile.svg"),

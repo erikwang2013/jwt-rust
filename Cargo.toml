@@ -1,6 +1,6 @@
 [package]
 name = "jwt-rust"
-version = "1.0.2"
+version = "1.0.3"
 edition = "2024"
 rust-version = "1.88"
 description = "A framework-agnostic JWT plugin for plain Rust and axum, actix-web, rocket, poem, salvo, warp, bee-rust, e-cat: one core, a request guard or eight native adapters, pluggable blacklist storage (redis / database / file / memcached)."

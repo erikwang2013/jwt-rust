@@ -2,6 +2,17 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.3] - 2026-10-19
+
+### Added
+
+- `mascot::Expression`：12 种宠物表情形态（笑 / 欢乐 / 哭 / 沮丧 / 惊恐 / 愤怒 / 撒娇 / 卖萌 / 讨好 / 敲打 / 捂脸 / 吐舌头）编译期内嵌，提供 `ALL` / `name()` / `cn_name()` / `svg()`
+
+### Changed
+
+- 项目宠物重绘为卡通橘猫 Kee：猫有九命=九种接入，八根胡须=八个框架适配层，爪中钥匙=JWT，颈圈蓝盾=校验与黑名单；`docs/pet.svg`、12 种表情 SVG、终端横幅、社交预览图与站点图标同步更新
+- README（中英）去除 HTML 标签，改用纯 Markdown；补英文表情表与 `mascot::Expression` 用法示例
+
 ## [1.0.2] - 2026-10-11
 
 多代理深度审查（安全 / 正确性 / Rust 地道性 / 性能与依赖四域并行）后的修复版，全部为小 diff，无破坏性 API 变更。
