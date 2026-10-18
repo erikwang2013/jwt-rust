@@ -2,26 +2,18 @@
 
 中文版：[README.md](./README.md) · Chinese version
 
-<div align="center">
-
 [![CI](https://github.com/erikwang2013/jwt-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/erikwang2013/jwt-rust/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/jwt-rust.svg)](https://crates.io/crates/jwt-rust)
 [![docs.rs](https://docs.rs/jwt-rust/badge.svg)](https://docs.rs/jwt-rust)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-</div>
-
-<div align="center">
-  <img src="./docs/social-preview.png" alt="jwt-rust — multi-framework JWT authentication plugin for Rust" width="960" />
-</div>
+![jwt-rust — multi-framework JWT authentication plugin for Rust](./docs/social-preview.png)
 
 A JWT authentication plugin compatible with axum, actix-web, rocket, poem, salvo, warp, bee-rust and e-cat, and equally usable in plain Rust projects without any framework. One framework-agnostic core + nine integration paths + four pluggable blacklist stores, built for distributed deployments and quick to install.
 
-<div align="center">
-  <img src="./docs/pet.svg" width="150" alt="Project mascot: Kee 钥匙小卫" />
-  <br />
-  <sub>Project mascot · <b>Kee 钥匙小卫</b> — the key head is the framework-agnostic core, the eight teeth on the blade are the eight framework adapters, and the shield on its chest is validation and the blacklist</sub>
-</div>
+![Project mascot: Kee 钥匙小卫](./docs/pet.svg)
+
+*Project mascot · **Kee 钥匙小卫** — a cat's nine lives for the nine integration paths, eight whiskers for the eight framework adapters, a key in its paw for JWT, and a blue shield on its collar for validation and the blacklist*
 
 Author: [艾瑞可erik / erik](https://erik.xyz)
 
@@ -41,8 +33,9 @@ This plugin decouples the core logic from frameworks entirely. Through a "one co
 
 The whole thing is split into four layers — "integration layer → framework-agnostic core → pluggable storage layer → underlying dependencies" — with dependencies pointing one way down, and every layer independently replaceable:
 
-<img src="./docs/architecture.en.svg" alt="Architecture diagram: integration layer (plain Rust and eight frameworks) / core layer / storage layer / underlying dependencies" width="960" />
-<sub>中文版: <a href="./docs/architecture.svg">architecture.svg</a></sub>
+![Architecture diagram: integration layer (plain Rust and eight frameworks) / core layer / storage layer / underlying dependencies](./docs/architecture.en.svg)
+
+*中文版: [architecture.svg](./docs/architecture.svg)*
 
 The core layer depends on no framework types; every external dependency (configuration, logging, storage connections) is injected through constructors or factory methods. Each framework's adapter is only responsible for accepting requests the way that framework does, calling the same core instance, and putting the payload back where that framework expects it. For a per-file module description see [Project Structure](#project-structure).
 
@@ -66,7 +59,7 @@ jwt-rust/
 │   ├── factory.rs                     Core: the JwtFactory factory, assembling core and storage from configuration
 │   ├── native.rs                      Core: framework-free request guard Guard + the unified 401 body unauthorized_body()
 │   ├── middleware_support.rs          Core: the except whitelist matcher ExceptList shared by middleware
-│   ├── mascot.rs                      Mascot: terminal banner banner() and vector figure svg()
+│   ├── mascot.rs                      Mascot: terminal banner banner(), vector figure svg(), and 12 expressions Expression
 │   ├── storage/                       Storage: blacklist drivers
 │   │   ├── mod.rs                     The TokenStorage trait abstraction + key sanitization
 │   │   ├── file.rs                    FileTokenStorage (atomic writes, probabilistic GC)
@@ -81,9 +74,10 @@ jwt-rust/
 │       └── ecat.rs → ecat/grpc.rs     e-cat: tower Layer (+ the gRPC interceptor under feature ecat-grpc)
 ├── tests/                             Integration tests (40 cases): the eight framework adapters + e-cat gRPC
 ├── examples/
-│   └── mascot.rs                      Runnable example: prints the mascot banner and the svg byte count
+│   └── mascot.rs                      Runnable example: prints the banner, main figure, and 12 expression byte counts
 ├── docs/                              Documentation and graphical assets
 │   ├── pet.svg                        Project mascot "Kee 钥匙小卫"
+│   ├── pet-expressions/               12 expression forms (embedded as mascot::Expression)
 │   ├── architecture.svg               Architecture diagram (English version architecture.en.svg)
 │   ├── features.svg                   Feature diagram (English version features.en.svg)
 │   ├── lifecycle.svg                  Token lifecycle diagram (English version lifecycle.en.svg)
@@ -109,8 +103,9 @@ cargo test --all-features
 
 ## Architecture Design
 
-<img src="./docs/architecture.en.svg" alt="Architecture diagram: four-layer structure" width="960" />
-<sub>中文版: <a href="./docs/architecture.svg">architecture.svg</a></sub>
+![Architecture diagram: four-layer structure](./docs/architecture.en.svg)
+
+*中文版: [architecture.svg](./docs/architecture.svg)*
 
 | Layer | Responsibility | Constraint |
 |------|------|------|
@@ -121,13 +116,15 @@ cargo test --all-features
 
 ## Feature Design
 
-<img src="./docs/features.en.svg" alt="Feature diagram: six feature domains" width="960" />
-<sub>中文版: <a href="./docs/features.svg">features.svg</a></sub>
+![Feature diagram: six feature domains](./docs/features.en.svg)
+
+*中文版: [features.svg](./docs/features.svg)*
 
 ## Token Lifecycle
 
-<img src="./docs/lifecycle.en.svg" alt="Token lifecycle diagram: seven stages and state transitions" width="960" />
-<sub>中文版: <a href="./docs/lifecycle.svg">lifecycle.svg</a></sub>
+![Token lifecycle diagram: seven stages and state transitions](./docs/lifecycle.en.svg)
+
+*中文版: [lifecycle.svg](./docs/lifecycle.svg)*
 
 A token passes through seven stages from issuance to destruction: **issue → deliver → validate → allow / deny → refresh → blacklist → expire and clean up**. Stages 3 and 4 are performed automatically by the middleware (under plain Rust, by `native::Guard`); the remaining stages are invoked by your business code as needed. Refresh uses a rotation strategy — the old `jti` enters the blacklist the moment a new token is issued, so the same refresh token can never be used twice (the swap itself is not atomic, see [Notes](#refresh-is-not-atomic-and-refresh-tokens-without-exp)); the new token's lifetime defaults to `refresh_expire`.
 
@@ -823,14 +820,15 @@ In the file driver an all-hex `jti` is used as the filename verbatim (no transcr
 
 ## Project Mascot
 
-<img src="./docs/pet.svg" width="180" align="right" alt="Kee 钥匙小卫" />
+![Kee 钥匙小卫](./docs/pet.svg)
 
-**Kee 钥匙小卫** is this project's mascot, and its shape is the architecture itself:
+**Kee 钥匙小卫** is this project's mascot: a cartoon orange cat holding a key.
 
-- **Key head** (round, with a face) — the framework-agnostic core: it recognises every token, and no framework
-- **Eight teeth on the blade** — the eight adapters axum / actix-web / rocket / poem / salvo / warp / bee-rust / e-cat, identical in shape and fixed in position
-- **No ninth tooth** — plain Rust projects use the core directly and need no adapter
-- **Shield on the chest** — validation and the blacklist: it only lights up once the signature verifies
+- **A cat's nine lives** — the nine integration paths: plain Rust plus axum / actix-web / rocket / poem / salvo / warp / bee-rust / e-cat
+- **Eight whiskers** — the eight framework adapters: same shape, fixed position; count them to see what is wired in
+- **Round body** — the framework-agnostic core: it knows tokens, not frameworks
+- **The key in its paw** — JWT tokens and signatures, Kee's original job
+- **The blue shield on its collar** — validation and the blacklist: released only after the signature verifies and the token is not revoked
 
 The figure file `docs/pet.svg` is a single pure-vector file with no scripts and no external dependencies; the animation uses SMIL, so it can be embedded directly in any page or document, and it is also compiled into the crate by `mascot::svg()` via `include_str!`.
 
@@ -844,9 +842,17 @@ print!("{}", mascot::banner(None));
 
 // Vector figure: the same figure can be sent straight to a browser or written into a view
 let svg: &'static str = mascot::svg();
+
+// 12 expression forms: smile / joy / cry / depressed / terrified / angry / coquettish / cute / pleasing / knocking / facepalm / tongue
+let smile: &'static str = mascot::Expression::Smile.svg();
+
+// Iterate over all forms
+for e in mascot::Expression::ALL {
+    println!("{} ({}) {} bytes", e.name(), e.cn_name(), e.svg().len());
+}
 ```
 
-Runnable example (prints the banner and the svg byte count):
+Runnable example (prints the banner, main figure, and 12 expression byte counts):
 
 ```sh
 cargo run --example mascot
@@ -856,7 +862,7 @@ cargo run --example mascot
 
 | WeChat | Alipay |
 |:---:|:---:|
-| <img src="./docs/weixinpay.png" width="130" height="130" alt="WeChat"> | <img src="./docs/alipay.png" width="130" height="130" alt="Alipay"> |
+| ![WeChat](./docs/weixinpay.png) | ![Alipay](./docs/alipay.png) |
 
 ---
 

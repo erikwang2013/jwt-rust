@@ -1,5 +1,5 @@
 // Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz
-//! 项目宠物「钥匙小卫 Kee」：钥匙柄=框架无关内核，刃上八齿=八个适配层，胸前盾牌=校验与黑名单
+//! 项目宠物「钥匙小卫 Kee」：卡通橘猫——猫有九命=九种接入，八根胡须=八个适配层，爪中钥匙=JWT，颈圈蓝盾=校验与黑名单；12 种表情形态见 `Expression`
 
 /// English name of the mascot.
 pub const NAME: &str = "Kee";
@@ -8,20 +8,13 @@ pub const CN_NAME: &str = "钥匙小卫";
 /// Project home page.
 pub const HOME: &str = "https://github.com/erikwang2013/jwt-rust";
 
-const ART: &str = r#"       .--------------.
-      /   o        o   \
-     |         ^        |
-     |       \___/      |
-      \        |       /
-       '.      |     .'
-         |     |     |
-      .--+-----+-----+--.
-     |      ( ### )      |
-      '--+-----+-----+--'
-         |     |     |
-         |     |     +--.
-         |     |     +--.
-         |_____|_____|"#;
+const ART: &str = r#"       /\_/\
+      ( o.o )
+       > ^ <
+      /|   |\
+     / |###| \
+    (  |___|  )
+     \_/   \_/"#;
 
 const GOLD: &str = "\x1b[38;5;214m";
 const BLUE: &str = "\x1b[38;5;39m";
@@ -63,6 +56,95 @@ pub fn banner(color: Option<bool>) -> String {
 /// 宠物矢量形象（编译期内嵌 docs/pet.svg）
 pub fn svg() -> &'static str {
     include_str!("../docs/pet.svg")
+}
+
+/// 宠物的 12 种表情形态。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Expression {
+    Smile,
+    Joy,
+    Cry,
+    Depressed,
+    Terrified,
+    Angry,
+    Coquettish,
+    Cute,
+    Pleasing,
+    Knocking,
+    Facepalm,
+    Tongue,
+}
+
+impl Expression {
+    /// 全部 12 种形态，顺序与 README 的表情表一致。
+    pub const ALL: [Self; 12] = [
+        Self::Smile,
+        Self::Joy,
+        Self::Cry,
+        Self::Depressed,
+        Self::Terrified,
+        Self::Angry,
+        Self::Coquettish,
+        Self::Cute,
+        Self::Pleasing,
+        Self::Knocking,
+        Self::Facepalm,
+        Self::Tongue,
+    ];
+
+    /// 英文标识，与 SVG 文件名一致。
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Smile => "smile",
+            Self::Joy => "joy",
+            Self::Cry => "cry",
+            Self::Depressed => "depressed",
+            Self::Terrified => "terrified",
+            Self::Angry => "angry",
+            Self::Coquettish => "coquettish",
+            Self::Cute => "cute",
+            Self::Pleasing => "pleasing",
+            Self::Knocking => "knocking",
+            Self::Facepalm => "facepalm",
+            Self::Tongue => "tongue",
+        }
+    }
+
+    /// 中文名，与 README 的表情表一致。
+    pub const fn cn_name(self) -> &'static str {
+        match self {
+            Self::Smile => "笑",
+            Self::Joy => "欢乐",
+            Self::Cry => "哭",
+            Self::Depressed => "沮丧",
+            Self::Terrified => "惊恐",
+            Self::Angry => "愤怒",
+            Self::Coquettish => "撒娇",
+            Self::Cute => "卖萌",
+            Self::Pleasing => "讨好",
+            Self::Knocking => "敲打",
+            Self::Facepalm => "捂脸",
+            Self::Tongue => "吐舌头",
+        }
+    }
+
+    /// 对应的 SVG 形象（编译期内嵌 docs/pet-expressions/*.svg）。
+    pub const fn svg(self) -> &'static str {
+        match self {
+            Self::Smile => include_str!("../docs/pet-expressions/smile.svg"),
+            Self::Joy => include_str!("../docs/pet-expressions/joy.svg"),
+            Self::Cry => include_str!("../docs/pet-expressions/cry.svg"),
+            Self::Depressed => include_str!("../docs/pet-expressions/depressed.svg"),
+            Self::Terrified => include_str!("../docs/pet-expressions/terrified.svg"),
+            Self::Angry => include_str!("../docs/pet-expressions/angry.svg"),
+            Self::Coquettish => include_str!("../docs/pet-expressions/coquettish.svg"),
+            Self::Cute => include_str!("../docs/pet-expressions/cute.svg"),
+            Self::Pleasing => include_str!("../docs/pet-expressions/pleasing.svg"),
+            Self::Knocking => include_str!("../docs/pet-expressions/knocking.svg"),
+            Self::Facepalm => include_str!("../docs/pet-expressions/facepalm.svg"),
+            Self::Tongue => include_str!("../docs/pet-expressions/tongue.svg"),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -111,5 +193,20 @@ mod tests {
         let s = svg();
         assert!(s.contains("<svg"));
         assert!(s.len() > 500);
+
+        let mut names = std::collections::HashSet::new();
+        for e in Expression::ALL {
+            assert!(names.insert(e.name()), "duplicate expression: {}", e.name());
+            assert!(!e.cn_name().is_empty());
+            let e_svg = e.svg();
+            assert!(e_svg.contains("<svg"));
+            assert!(e_svg.len() > 500);
+            assert!(
+                e_svg.contains(e.cn_name()),
+                "{} svg lacks its cn name",
+                e.name()
+            );
+        }
+        assert_eq!(names.len(), 12);
     }
 }

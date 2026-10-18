@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="spTitle spDesc" shape-rendering="geometricPrecision"
      font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans SC', 'Noto Sans CJK SC', sans-serif">
-  <title id="spTitle">jwt-rust 社交预览图：钥匙小卫 Kee</title>
-  <desc id="spDesc">jwt-rust —— 面向 Rust 的框架无关 JWT 插件：一套内核、九种接入、四种黑名单存储，适配 axum、actix-web、rocket、poem、salvo、warp、bee-rust、e-cat。</desc>
+  <title id="spTitle">jwt-rust 社交预览图：钥匙小卫 Kee（卡通橘猫）</title>
+  <desc id="spDesc">jwt-rust —— 面向 Rust 的框架无关 JWT 插件：一套内核、九种接入、四种黑名单存储，适配 axum、actix-web、rocket、poem、salvo、warp、bee-rust、e-cat。画面右侧是吉祥物 Kee：一只举着钥匙的卡通橘猫。</desc>
   <defs>
     <linearGradient id="keeGold" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#FDE68A"/>
@@ -27,47 +27,79 @@
   <line x1="88" y1="358" x2="640" y2="358" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round"/>
   <text x="88" y="404" font-size="22" fill="#4F46E5">axum · actix-web · rocket · poem · salvo · warp · bee-rust · e-cat</text>
 
-  <!-- 右侧 Kee 宠物：自 docs/pet.svg 原样拷贝（移除 SMIL 动画与脉动盾轮廓 path，未重画任何路径），放大居中 -->
-  <g transform="translate(857 40.5) scale(1.8)">
-    <!-- 脚 -->
-    <ellipse cx="108" cy="275" rx="12" ry="8" fill="#1E293B"/>
-    <ellipse cx="132" cy="275" rx="12" ry="8" fill="#1E293B"/>
+  <!-- 右侧 Kee 宠物：自 docs/pet.svg 原样拷贝（移除 SMIL 动画与盾牌脉冲轮廓 path，未重画任何路径），放大居中 -->
+  <g transform="translate(792 100) scale(1.8)">
+  <!-- 地面投影 -->
+  <ellipse cx="120" cy="226" rx="58" ry="7" fill="#0F172A" opacity=".08"/>
 
-    <!-- 右臂（挥手，置于身体之后） -->
-    <g>
-      <path d="M138 150 C154 146 168 134 172 118" fill="none" stroke="#1E293B" stroke-width="19" stroke-linecap="round"/>
-      <path d="M138 150 C154 146 168 134 172 118" fill="none" stroke="#F59E0B" stroke-width="11" stroke-linecap="round"/>
-      <circle cx="172" cy="116" r="11" fill="#FBBF24" stroke="#1E293B" stroke-width="5"/>
-    </g>
-
-    <!-- 左臂 -->
-    <path d="M98 170 C84 174 76 184 76 196" fill="none" stroke="#1E293B" stroke-width="19" stroke-linecap="round"/>
-    <path d="M98 170 C84 174 76 184 76 196" fill="none" stroke="#F59E0B" stroke-width="11" stroke-linecap="round"/>
-    <circle cx="76" cy="198" r="11" fill="#FBBF24" stroke="#1E293B" stroke-width="5"/>
-
-    <!-- 身体 = 钥匙刃，右侧八颗齿 = 八个框架适配层 -->
-    <path d="M96 110 H144 V126 h16 a5 5 0 0 1 0 10 h-16 V142 h16 a5 5 0 0 1 0 10 h-16 V158 h16 a5 5 0 0 1 0 10 h-16 V174 h16 a5 5 0 0 1 0 10 h-16 V190 h16 a5 5 0 0 1 0 10 h-16 V206 h16 a5 5 0 0 1 0 10 h-16 V222 h16 a5 5 0 0 1 0 10 h-16 V238 h16 a5 5 0 0 1 0 10 h-16 V248 a20 20 0 0 1 -20 20 H116 a20 20 0 0 1 -20 -20 Z"
-          fill="url(#keeGold)" stroke="#1E293B" stroke-width="5" stroke-linejoin="round"/>
-
-    <!-- 盾牌（校验与黑名单） -->
-    <path d="M120 154 L142 162 V182 C142 198 132 207 120 213 C108 207 98 198 98 182 V162 Z"
-          fill="url(#keeShield)" stroke="#1E293B" stroke-width="5" stroke-linejoin="round"/>
-    <path d="M109 182 l8 8 l15 -17" fill="none" stroke="#FFFFFF" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
-
-    <!-- 头（钥匙柄） -->
-    <circle cx="120" cy="78" r="48" fill="url(#keeGold)" stroke="#1E293B" stroke-width="5"/>
-    <ellipse cx="101" cy="57" rx="16" ry="10" fill="#FFFBEB" opacity=".55" transform="rotate(-24 101 57)"/>
-
-    <!-- 表情 -->
-    <ellipse cx="102" cy="86" rx="6" ry="7.5" fill="#1F2937"/>
-    <ellipse cx="138" cy="86" rx="6" ry="7.5" fill="#1F2937"/>
-    <circle cx="104" cy="83" r="2.2" fill="#FFFFFF"/>
-    <circle cx="140" cy="83" r="2.2" fill="#FFFFFF"/>
-    <circle cx="91" cy="99" r="7" fill="#FB7185" opacity=".4"/>
-    <circle cx="149" cy="99" r="7" fill="#FB7185" opacity=".4"/>
-    <path d="M108 97 q12 14 24 0" fill="none" stroke="#1F2937" stroke-width="4.5" stroke-linecap="round"/>
+  <!-- 尾巴 -->
+  <g>
+    <path d="M84 204 C62 214 46 198 46 180 C46 168 50 160 58 154" fill="none" stroke="#1E293B" stroke-width="23" stroke-linecap="round"/>
+    <path d="M84 204 C62 214 46 198 46 180 C46 168 50 160 58 154" fill="none" stroke="url(#keeGold)" stroke-width="14" stroke-linecap="round"/>
   </g>
 
+  <!-- 身体 = 框架无关内核 -->
+  <ellipse cx="120" cy="176" rx="48" ry="44" fill="url(#keeGold)" stroke="#1E293B" stroke-width="5"/>
+  <ellipse cx="120" cy="184" rx="30" ry="32" fill="#FFFBEB"/>
+
+  <!-- 前爪 -->
+  <ellipse cx="102" cy="213" rx="12" ry="9" fill="#FFFBEB" stroke="#1E293B" stroke-width="4.5"/>
+  <ellipse cx="138" cy="213" rx="12" ry="9" fill="#FFFBEB" stroke="#1E293B" stroke-width="4.5"/>
+  <path d="M98 209 v7 M106 209 v7 M134 209 v7 M142 209 v7" fill="none" stroke="#1E293B" stroke-width="2" stroke-linecap="round" opacity=".45"/>
+
+  <!-- 颈圈 -->
+  <ellipse cx="120" cy="156" rx="36" ry="7.5" fill="url(#keeShield)" stroke="#1E293B" stroke-width="4"/>
+
+  <!-- 头（耳朵先画，头圆压住根部） -->
+  <g>
+    <path d="M76 66 C66 52 60 34 62 20 C78 28 92 38 100 48 Z" fill="url(#keeGold)" stroke="#1E293B" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M76 56 C69 46 66 36 67 29 C77 35 85 41 90 47 Z" fill="#FDA4AF"/>
+    <path d="M164 66 C174 52 180 34 178 20 C162 28 148 38 140 48 Z" fill="url(#keeGold)" stroke="#1E293B" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M164 56 C171 46 174 36 173 29 C163 35 155 41 150 47 Z" fill="#FDA4AF"/>
+
+    <circle cx="120" cy="95" r="58" fill="url(#keeGold)" stroke="#1E293B" stroke-width="5"/>
+    <ellipse cx="94" cy="64" rx="17" ry="10" fill="#FFFBEB" opacity=".5" transform="rotate(-25 94 64)"/>
+
+    <!-- 表情 -->
+    <ellipse cx="98" cy="97" rx="9" ry="11.5" fill="#1F2937">
+      </ellipse>
+    <ellipse cx="142" cy="97" rx="9" ry="11.5" fill="#1F2937">
+      </ellipse>
+    <circle cx="101" cy="93" r="3.2" fill="#FFFFFF"/>
+    <circle cx="145" cy="93" r="3.2" fill="#FFFFFF"/>
+    <circle cx="95" cy="102" r="1.3" fill="#FFFFFF" opacity=".8"/>
+    <circle cx="139" cy="102" r="1.3" fill="#FFFFFF" opacity=".8"/>
+    <circle cx="74" cy="118" r="9" fill="#FB7185" opacity=".35"/>
+    <circle cx="166" cy="118" r="9" fill="#FB7185" opacity=".35"/>
+
+    <path d="M114 108 Q120 104 126 108 L120 115 Z" fill="#FB7185" stroke="#1E293B" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M120 115 Q114 122 108 118 M120 115 Q126 122 132 118" fill="none" stroke="#1E293B" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- 八根胡须 = 八个框架适配层 -->
+    <path d="M74 102 C64 100 54 98 44 96 M74 108 C63 108 53 108 42 108 M74 114 C64 116 55 118 46 122 M76 120 C67 124 60 128 53 134" fill="none" stroke="#1E293B" stroke-width="2.5" stroke-linecap="round" opacity=".85"/>
+    <path d="M166 102 C176 100 186 98 196 96 M166 108 C177 108 187 108 198 108 M166 114 C176 116 185 118 194 122 M164 120 C173 124 180 128 187 134" fill="none" stroke="#1E293B" stroke-width="2.5" stroke-linecap="round" opacity=".85"/>
+  </g>
+
+  <!-- 颈圈上的蓝盾 = 校验与黑名单 -->
+  <path d="M120 162 L134 167 V177 C134 187 127 192 120 196 C113 192 106 187 106 177 V167 Z" fill="url(#keeShield)" stroke="#1E293B" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M112 177 l5 5 l10 -11" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- 举着钥匙的爪子 = JWT 令牌与签名 -->
+  <g>
+    <circle cx="184" cy="124" r="6.5" fill="#FBBF24" stroke="#1E293B" stroke-width="3.5"/>
+    <path d="M188 120 L204 104" fill="none" stroke="#1E293B" stroke-width="6" stroke-linecap="round"/>
+    <path d="M188 120 L204 104" fill="none" stroke="#FBBF24" stroke-width="3" stroke-linecap="round"/>
+    <path d="M198 110 l5 5 M201 107 l4 4" fill="none" stroke="#1E293B" stroke-width="5" stroke-linecap="round"/>
+    <path d="M198 110 l5 5 M201 107 l4 4" fill="none" stroke="#FBBF24" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M158 166 C168 156 176 146 182 140" fill="none" stroke="#1E293B" stroke-width="20" stroke-linecap="round"/>
+    <path d="M158 166 C168 156 176 146 182 140" fill="none" stroke="url(#keeGold)" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="184" cy="138" r="12" fill="#FFFBEB" stroke="#1E293B" stroke-width="4.5"/>
+    <circle cx="179.5" cy="133.5" r="2.2" fill="#FB7185" opacity=".65"/>
+    <circle cx="184" cy="132" r="2.2" fill="#FB7185" opacity=".65"/>
+    <circle cx="188.5" cy="133.5" r="2.2" fill="#FB7185" opacity=".65"/>
+    <ellipse cx="184" cy="139.5" rx="4.5" ry="3.5" fill="#FB7185" opacity=".5"/>
+  </g>
+  </g>
   <!-- 角落署名 -->
   <text x="88" y="576" font-size="19" fill="#94A3B8">github.com/erikwang2013/jwt-rust</text>
   <text x="1192" y="576" font-size="19" fill="#94A3B8" text-anchor="end">© 2026 erik · https://erik.xyz</text>

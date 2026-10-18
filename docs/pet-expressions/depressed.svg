@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 240 310" width="240" height="310" role="img" aria-label="钥匙小卫 Kee · 沮丧 Depressed"><title>钥匙小卫 Kee · 沮丧 Depressed</title><desc>钥匙小卫 Kee 的 沮丧 表情形态 · animated expression form</desc><style>
-.ex-motion { animation: ex-slump 4.2s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 50%; }
+<svg xmlns="http://www.w3.org/2000/svg" width="88" height="88" viewBox="0 0 240 240" role="img" aria-label="钥匙小卫 Kee · 沮丧 Depressed"><title>钥匙小卫 Kee · 沮丧 Depressed</title><desc>钥匙小卫 Kee 的 沮丧 表情形态 · animated expression form · © 2026 erik · https://erik.xyz</desc><style>
+.ex-motion { animation: ex-bob 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 50%; }
 .ex-anim-tear { animation: ex-tear 1.8s ease-in infinite; transform-box: fill-box; transform-origin: center; }
 .ex-anim-sweat { animation: ex-tear 1.5s ease-in infinite; transform-box: fill-box; transform-origin: center; }
 .ex-anim-heart { animation: ex-heart 2.2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
@@ -14,7 +14,7 @@
 .ex-anim-shock { animation: ex-shock 0.5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 .ex-anim-please { animation: ex-please 1.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 .ex-anim-drift { animation: ex-drift 4.5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
-@keyframes ex-slump { 0%,100% { transform: translateY(0); } 50% { transform: translateY(2.18px); } }
+@keyframes ex-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2.18px); } }
 @keyframes ex-tear { 0% { transform: translateY(0); opacity: 0; } 18% { opacity: 1; } 100% { transform: translateY(8px); opacity: 0; } }
 @keyframes ex-heart { 0% { transform: translateY(0) scale(.65); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(-12.24px) scale(1.15); opacity: 0; } }
 @keyframes ex-spark { 0%,100% { transform: scale(.6) rotate(0deg); opacity: .3; } 50% { transform: scale(1.15) rotate(25deg); opacity: 1; } }
@@ -31,7 +31,7 @@
 @media (prefers-reduced-motion: reduce) {
   .ex-motion, [class*="ex-anim-"] { animation: none !important; }
 }
-</style><g class="ex-motion ex-depressed"><g class="ex-base"><defs>
+</style><defs>
     <linearGradient id="keeGold" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#FDE68A"/>
       <stop offset=".5" stop-color="#FBBF24"/>
@@ -42,70 +42,70 @@
       <stop offset="1" stop-color="#2563EB"/>
     </linearGradient>
   </defs>
+  <!-- 地面投影 -->
+  <ellipse cx="120" cy="226" rx="58" ry="7" fill="#0F172A" opacity=".08"/>
 
-  
-  <ellipse cx="120" cy="284" rx="58" ry="9" fill="#0F172A" opacity=".10"/>
+  <g class="ex-motion">
+    <!-- 尾巴 -->
+    <path d="M84 204 C62 214 46 198 46 180 C46 168 50 160 58 154" fill="none" stroke="#1E293B" stroke-width="23" stroke-linecap="round"/>
+    <path d="M84 204 C62 214 46 198 46 180 C46 168 50 160 58 154" fill="none" stroke="url(#keeGold)" stroke-width="14" stroke-linecap="round"/>
 
-  <g>
-    
+    <!-- 身体 -->
+    <ellipse cx="120" cy="176" rx="48" ry="44" fill="url(#keeGold)" stroke="#1E293B" stroke-width="5"/>
+    <ellipse cx="120" cy="184" rx="30" ry="32" fill="#FFFBEB"/>
 
-    
-    <ellipse cx="108" cy="275" rx="12" ry="8" fill="#1E293B"/>
-    <ellipse cx="132" cy="275" rx="12" ry="8" fill="#1E293B"/>
+    <!-- 前爪 -->
+    <ellipse cx="102" cy="213" rx="12" ry="9" fill="#FFFBEB" stroke="#1E293B" stroke-width="4.5"/>
+    <ellipse cx="138" cy="213" rx="12" ry="9" fill="#FFFBEB" stroke="#1E293B" stroke-width="4.5"/>
+    <path d="M98 209 v7 M106 209 v7 M134 209 v7 M142 209 v7" fill="none" stroke="#1E293B" stroke-width="2" stroke-linecap="round" opacity=".45"/>
 
-    
+    <!-- 颈圈 -->
+    <ellipse cx="120" cy="156" rx="36" ry="7.5" fill="url(#keeShield)" stroke="#1E293B" stroke-width="4"/>
+
+    <!-- 头 -->
     <g>
-      
-      <path d="M138 150 C154 146 168 134 172 118" fill="none" stroke="#1E293B" stroke-width="19" stroke-linecap="round"/>
-      <path d="M138 150 C154 146 168 134 172 118" fill="none" stroke="#F59E0B" stroke-width="11" stroke-linecap="round"/>
-      <circle cx="172" cy="116" r="11" fill="#FBBF24" stroke="#1E293B" stroke-width="5"/>
+      <path d="M76 66 C66 52 60 34 62 20 C78 28 92 38 100 48 Z" fill="url(#keeGold)" stroke="#1E293B" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M76 56 C69 46 66 36 67 29 C77 35 85 41 90 47 Z" fill="#FDA4AF"/>
+      <path d="M164 66 C174 52 180 34 178 20 C162 28 148 38 140 48 Z" fill="url(#keeGold)" stroke="#1E293B" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M164 56 C171 46 174 36 173 29 C163 35 155 41 150 47 Z" fill="#FDA4AF"/>
+      <circle cx="120" cy="95" r="58" fill="url(#keeGold)" stroke="#1E293B" stroke-width="5"/>
+      <ellipse cx="94" cy="64" rx="17" ry="10" fill="#FFFBEB" opacity=".5" transform="rotate(-25 94 64)"/>
+      <path d="M114 108 Q120 104 126 108 L120 115 Z" fill="#FB7185" stroke="#1E293B" stroke-width="2.5" stroke-linejoin="round"/>
+      <circle cx="74" cy="118" r="9" fill="#FB7185" opacity=".2"/>
+      <circle cx="166" cy="118" r="9" fill="#FB7185" opacity=".2"/>
+      <path d="M89 98 Q98 104 107 98" fill="none" stroke="#1E293B" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M133 98 Q142 104 151 98" fill="none" stroke="#1E293B" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="98" cy="103" r="3" fill="#1F2937"/>
+      <circle cx="142" cy="103" r="3" fill="#1F2937"/>
+      <path d="M112 124 Q120 120 128 124" fill="none" stroke="#1E293B" stroke-width="3" stroke-linecap="round"/>
+      <path d="M74 102 C64 100 54 98 44 96 M74 108 C63 108 53 108 42 108 M74 114 C64 116 55 118 46 122 M76 120 C67 124 60 128 53 134" fill="none" stroke="#1E293B" stroke-width="2.5" stroke-linecap="round" opacity=".85"/>
+      <path d="M166 102 C176 100 186 98 196 96 M166 108 C177 108 187 108 198 108 M166 114 C176 116 185 118 194 122 M164 120 C173 124 180 128 187 134" fill="none" stroke="#1E293B" stroke-width="2.5" stroke-linecap="round" opacity=".85"/>
     </g>
 
-    
-    <path d="M98 170 C84 174 76 184 76 196" fill="none" stroke="#1E293B" stroke-width="19" stroke-linecap="round"/>
-    <path d="M98 170 C84 174 76 184 76 196" fill="none" stroke="#F59E0B" stroke-width="11" stroke-linecap="round"/>
-    <circle cx="76" cy="198" r="11" fill="#FBBF24" stroke="#1E293B" stroke-width="5"/>
-
-    
-    <path d="M96 110 H144 V126 h16 a5 5 0 0 1 0 10 h-16 V142 h16 a5 5 0 0 1 0 10 h-16 V158 h16 a5 5 0 0 1 0 10 h-16 V174 h16 a5 5 0 0 1 0 10 h-16 V190 h16 a5 5 0 0 1 0 10 h-16 V206 h16 a5 5 0 0 1 0 10 h-16 V222 h16 a5 5 0 0 1 0 10 h-16 V238 h16 a5 5 0 0 1 0 10 h-16 V248 a20 20 0 0 1 -20 20 H116 a20 20 0 0 1 -20 -20 Z"
-          fill="url(#keeGold)" stroke="#1E293B" stroke-width="5" stroke-linejoin="round"/>
-
-    
-    <path d="M120 154 L142 162 V182 C142 198 132 207 120 213 C108 207 98 198 98 182 V162 Z"
-          fill="url(#keeShield)" stroke="#1E293B" stroke-width="5" stroke-linejoin="round"/>
-    <path d="M109 182 l8 8 l15 -17" fill="none" stroke="#FFFFFF" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <g transform="translate(120 182)">
-      <path d="M0 -28 L22 -20 V0 C22 16 12 25 0 31 C-12 25 -22 16 -22 0 V-20 Z" fill="none" stroke="#60A5FA" stroke-width="3">
-        
-        
-      </path>
+    <!-- 颈圈上的蓝盾 -->
+    <path d="M120 162 L134 167 V177 C134 187 127 192 120 196 C113 192 106 187 106 177 V167 Z" fill="url(#keeShield)" stroke="#1E293B" stroke-width="3.5" stroke-linejoin="round"/>
+    <g transform="translate(120 179)">
+      <path class="ex-anim-pulse" d="M0 -17 L15 -12 V2 C15 13 8 19 0 23 C-8 19 -15 13 -15 2 V-12 Z" fill="none" stroke="#60A5FA" stroke-width="2.2"/>
     </g>
-
-    
-    <circle cx="120" cy="78" r="48" fill="url(#keeGold)" stroke="#1E293B" stroke-width="5"/>
-    <ellipse cx="101" cy="57" rx="16" ry="10" fill="#FFFBEB" opacity=".55" transform="rotate(-24 101 57)"/>
-
-    
-    <ellipse cx="102" cy="86" rx="6" ry="7.5" fill="#1F2937">
-      
-    </ellipse>
-    <ellipse cx="138" cy="86" rx="6" ry="7.5" fill="#1F2937">
-      
-    </ellipse>
-    <circle cx="104" cy="83" r="2.2" fill="#FFFFFF"/>
-    <circle cx="140" cy="83" r="2.2" fill="#FFFFFF"/>
-    <circle cx="91" cy="99" r="7" fill="#FB7185" opacity=".4"/>
-    <circle cx="149" cy="99" r="7" fill="#FB7185" opacity=".4"/>
-    <path d="M108 97 q12 14 24 0" fill="none" stroke="#1F2937" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="M112 177 l5 5 l10 -11" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- 举着钥匙的爪子 -->
+    <g>
+      <circle cx="184" cy="124" r="6.5" fill="#FBBF24" stroke="#1E293B" stroke-width="3.5"/>
+      <path d="M188 120 L204 104" fill="none" stroke="#1E293B" stroke-width="6" stroke-linecap="round"/>
+      <path d="M188 120 L204 104" fill="none" stroke="#FBBF24" stroke-width="3" stroke-linecap="round"/>
+      <path d="M198 110 l5 5 M201 107 l4 4" fill="none" stroke="#1E293B" stroke-width="5" stroke-linecap="round"/>
+      <path d="M198 110 l5 5 M201 107 l4 4" fill="none" stroke="#FBBF24" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M158 166 C168 156 176 146 182 140" fill="none" stroke="#1E293B" stroke-width="20" stroke-linecap="round"/>
+      <path d="M158 166 C168 156 176 146 182 140" fill="none" stroke="url(#keeGold)" stroke-width="12" stroke-linecap="round"/>
+      <circle cx="184" cy="138" r="12" fill="#FFFBEB" stroke="#1E293B" stroke-width="4.5"/>
+      <circle cx="179.5" cy="133.5" r="2.2" fill="#FB7185" opacity=".65"/>
+      <circle cx="184" cy="132" r="2.2" fill="#FB7185" opacity=".65"/>
+      <circle cx="188.5" cy="133.5" r="2.2" fill="#FB7185" opacity=".65"/>
+      <ellipse cx="184" cy="139.5" rx="4.5" ry="3.5" fill="#FB7185" opacity=".5"/>
+    </g>
+    <path d="M16 32 q0 -10 10 -10 q3 -7 12 -4 q7 -4 11 3 q10 0 9 11 Z" fill="#CBD5E1" stroke="#1E293B" stroke-width="3" stroke-linejoin="round"/>
+    <g class="ex-anim-rain" stroke="#60A5FA" stroke-width="3" stroke-linecap="round">
+      <path d="M28 36 l-2 7 M40 40 l-2 7 M52 36 l-2 7"/>
+    </g>
   </g>
-
-  
-  <path d="M44 48 l3.2 6.8 6.8 3.2 -6.8 3.2 -3.2 6.8 -3.2 -6.8 -6.8 -3.2 6.8 -3.2 z" fill="#FBBF24">
-    
-  </path>
-  <path d="M196 186 l2.6 5.4 5.4 2.6 -5.4 2.6 -2.6 5.4 -2.6 -5.4 -5.4 -2.6 5.4 -2.6 z" fill="#2563EB">
-    
-  </path>
-  <path d="M190 84 l2.2 4.6 4.6 2.2 -4.6 2.2 -2.2 4.6 -2.2 -4.6 -4.6 -2.2 4.6 -2.2 z" fill="#0D9488">
-    
-  </path></g><g class="ex-face"><ellipse cx="120" cy="95" rx="28" ry="22" fill="#F7AC15"/><path d="M 95.54,79.2 L 105.74,75.12" stroke="#1F2937" stroke-width="1.6" stroke-linecap="round"/><path d="M 144.46,79.2 L 134.26,75.12" stroke="#1F2937" stroke-width="1.6" stroke-linecap="round"/><ellipse cx="102" cy="86" rx="6.8" ry="6.26" fill="#FFFFFF" stroke="#1F2937" stroke-width="1.3"/><ellipse cx="102" cy="86" rx="3.26" ry="3.44" fill="#1F2937"/><circle cx="100.5" cy="84.25" r="1.36" fill="#FFFFFF"/><path d="M 95.2,83.81 Q 102,79.74 108.8,83.81" fill="none" stroke="#1F2937" stroke-width="1.49" stroke-linecap="round"/><ellipse cx="138" cy="86" rx="6.8" ry="6.26" fill="#FFFFFF" stroke="#1F2937" stroke-width="1.3"/><ellipse cx="138" cy="86" rx="3.26" ry="3.44" fill="#1F2937"/><circle cx="136.5" cy="84.25" r="1.36" fill="#FFFFFF"/><path d="M 131.2,83.81 Q 138,79.74 144.8,83.81" fill="none" stroke="#1F2937" stroke-width="1.49" stroke-linecap="round"/><path d="M 112.08,100.96 Q 120,93.62 127.92,100.96" fill="none" stroke="#1F2937" stroke-width="1.7" stroke-linecap="round"/><ellipse cx="96.9" cy="95.18" rx="5.3" ry="2.86" fill="#FF8FB3" opacity="0.18"/><ellipse cx="143.1" cy="95.18" rx="5.3" ry="2.86" fill="#FF8FB3" opacity="0.18"/><g class="ex-anim-drift"><circle cx="110.55" cy="54.06" r="6.5" fill="#93A3B8"/><circle cx="118.52" cy="51.6" r="8.86" fill="#93A3B8"/><circle cx="128.27" cy="53.84" r="5.9" fill="#93A3B8"/><rect x="106.71" y="52.94" width="26.57" height="4.71" rx="2.36" fill="#93A3B8"/></g><g transform="translate(111.14 69.23)"><path class="ex-anim-rain" style="animation-delay:0.0s" d="M 0 0 L -2 12" stroke="#7CC4F8" stroke-width="1.2" stroke-linecap="round"/></g><g transform="translate(117.05 69.23)"><path class="ex-anim-rain" style="animation-delay:0.22s" d="M 0 0 L -2 12" stroke="#7CC4F8" stroke-width="1.2" stroke-linecap="round"/></g><g transform="translate(122.95 69.23)"><path class="ex-anim-rain" style="animation-delay:0.44s" d="M 0 0 L -2 12" stroke="#7CC4F8" stroke-width="1.2" stroke-linecap="round"/></g><g transform="translate(128.86 69.23)"><path class="ex-anim-rain" style="animation-delay:0.66s" d="M 0 0 L -2 12" stroke="#7CC4F8" stroke-width="1.2" stroke-linecap="round"/></g></g></g></svg>
+</svg>

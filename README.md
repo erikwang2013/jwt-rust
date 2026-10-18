@@ -1,25 +1,17 @@
 # erikwang2013/jwt-rust
 
-<div align="center">
-
 [![CI](https://github.com/erikwang2013/jwt-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/erikwang2013/jwt-rust/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/jwt-rust.svg)](https://crates.io/crates/jwt-rust)
 [![docs.rs](https://docs.rs/jwt-rust/badge.svg)](https://docs.rs/jwt-rust)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-</div>
-
-<div align="center">
-  <img src="./docs/social-preview.png" alt="jwt-rust — Rust 多框架 JWT 认证插件" width="960" />
-</div>
+![jwt-rust — Rust 多框架 JWT 认证插件](./docs/social-preview.png)
 
 一款兼容 axum、actix-web、rocket、poem、salvo、warp、bee-rust、e-cat 的 JWT 认证插件，也能直接在原生 Rust（无框架）项目中使用。一套框架无关内核 + 九种接入方式 + 四种可插拔黑名单存储，适用于分布式部署，安装简单快捷。
 
-<div align="center">
-  <img src="./docs/pet.svg" width="150" alt="项目宠物：钥匙小卫 Kee" />
-  <br />
-  <sub>项目宠物 · <b>钥匙小卫 Kee</b> —— 钥匙柄是框架无关内核，刃上八颗齿是八个框架适配层，胸前盾牌是校验与黑名单</sub>
-</div>
+![项目宠物：钥匙小卫 Kee](./docs/pet.svg)
+
+*项目宠物 · **钥匙小卫 Kee** —— 猫有九条命，对应九种接入方式；八根胡须是八个框架适配层；爪中钥匙是 JWT，颈圈蓝盾是校验与黑名单*
 
 作者：[艾瑞可erik](https://erik.xyz)
 
@@ -39,8 +31,9 @@
 
 整体分为「接入层 → 框架无关内核 → 可插拔存储层 → 底层依赖」四层，依赖单向向下，任何一层都能独立替换：
 
-<img src="./docs/architecture.svg" alt="架构设计图：接入层（原生 Rust 与八框架）/ 核心层 / 存储层 / 底层依赖" width="960" />
-<sub>English: <a href="./docs/architecture.en.svg">architecture.en.svg</a></sub>
+![架构设计图：接入层（原生 Rust 与八框架）/ 核心层 / 存储层 / 底层依赖](./docs/architecture.svg)
+
+*English: [architecture.en.svg](./docs/architecture.en.svg)*
 
 核心层不依赖任何框架类型，所有外部依赖（配置、日志、存储连接）通过构造函数或工厂方法注入。每个框架的适配层只负责按该框架的惯用法接入请求、调用同一个核心实例、把 payload 放回框架的惯用位置。逐文件的模块说明见 [项目结构](#项目结构)。
 
@@ -64,7 +57,7 @@ jwt-rust/
 │   ├── factory.rs                     核心：工厂 JwtFactory，按配置组装内核与存储
 │   ├── native.rs                      核心：无框架请求守卫 Guard + 统一 401 响应体 unauthorized_body()
 │   ├── middleware_support.rs          核心：中间件共用的 except 白名单匹配 ExceptList
-│   ├── mascot.rs                      宠物：终端横幅 banner() 与矢量形象 svg()
+│   ├── mascot.rs                      宠物：终端横幅 banner()、矢量形象 svg() 与 12 种表情 Expression
 │   ├── storage/                       存储：黑名单驱动
 │   │   ├── mod.rs                     TokenStorage trait 抽象 + 键名净化
 │   │   ├── file.rs                    FileTokenStorage（原子写、概率 GC）
@@ -79,9 +72,10 @@ jwt-rust/
 │       └── ecat.rs → ecat/grpc.rs     e-cat：tower Layer（+ feature ecat-grpc 下的 gRPC 拦截器）
 ├── tests/                             集成测试（40 个用例）：八个框架适配层 + e-cat gRPC
 ├── examples/
-│   └── mascot.rs                      可运行示例：打印宠物横幅与 svg 字节数
+│   └── mascot.rs                      可运行示例：打印宠物横幅、主形象与 12 种表情的字节数
 ├── docs/                              文档与图形资源
 │   ├── pet.svg                        项目宠物「钥匙小卫 Kee」
+│   ├── pet-expressions/               12 种表情形态（编译期内嵌 mascot::Expression）
 │   ├── architecture.svg               架构设计图（英文版 architecture.en.svg）
 │   ├── features.svg                   功能设计图（英文版 features.en.svg）
 │   ├── lifecycle.svg                  令牌生命周期图（英文版 lifecycle.en.svg）
@@ -107,8 +101,9 @@ cargo test --all-features
 
 ## 架构设计
 
-<img src="./docs/architecture.svg" alt="架构设计图：四层结构" width="960" />
-<sub>English: <a href="./docs/architecture.en.svg">architecture.en.svg</a></sub>
+![架构设计图：四层结构](./docs/architecture.svg)
+
+*English: [architecture.en.svg](./docs/architecture.en.svg)*
 
 | 层 | 职责 | 约束 |
 |------|------|------|
@@ -119,13 +114,15 @@ cargo test --all-features
 
 ## 功能设计
 
-<img src="./docs/features.svg" alt="功能设计图：六大功能域" width="960" />
-<sub>English: <a href="./docs/features.en.svg">features.en.svg</a></sub>
+![功能设计图：六大功能域](./docs/features.svg)
+
+*English: [features.en.svg](./docs/features.en.svg)*
 
 ## 令牌生命周期
 
-<img src="./docs/lifecycle.svg" alt="令牌生命周期图：七个阶段与状态流转" width="960" />
-<sub>English: <a href="./docs/lifecycle.en.svg">lifecycle.en.svg</a></sub>
+![令牌生命周期图：七个阶段与状态流转](./docs/lifecycle.svg)
+
+*English: [lifecycle.en.svg](./docs/lifecycle.en.svg)*
 
 一枚令牌从签发到销毁共七个阶段：**签发 → 下发 → 校验 → 放行 / 拒绝 → 刷新 → 拉黑 → 过期与清理**。其中第 3、4 步由中间件（原生 Rust 下是 `native::Guard`）自动完成，其余步骤由业务代码按需调用。刷新采用轮换策略——旧 `jti` 在换发新令牌的同时进入黑名单，因此同一枚刷新令牌不会被重复使用（换发动作本身非原子，见[注意事项](#refresh-非原子与无-exp-刷新令牌)）；新令牌的有效期默认取 `refresh_expire`。
 
@@ -819,14 +816,15 @@ redis / memcached 对超过 64 字符的**全十六进制** `jti` 同样转 sha2
 
 ## 项目宠物
 
-<img src="./docs/pet.svg" width="180" align="right" alt="钥匙小卫 Kee" />
+![钥匙小卫 Kee](./docs/pet.svg)
 
-**钥匙小卫 Kee** 是本项目的吉祥物，造型就是这套架构本身：
+**钥匙小卫 Kee** 是本项目的吉祥物，一只举着钥匙的卡通橘猫：
 
-- **钥匙柄**（圆头带表情）—— 框架无关内核：认得所有令牌，不认框架
-- **刃上八颗齿** —— axum / actix-web / rocket / poem / salvo / warp / bee-rust / e-cat 八个适配层，形状一致、位置固定
-- **没有第九颗齿** —— 原生 Rust 项目直接使用内核，不需要适配层
-- **胸前盾牌** —— 校验与黑名单：验签通过才会亮起
+- **猫有九条命** —— 九种接入方式：原生 Rust + axum / actix-web / rocket / poem / salvo / warp / bee-rust / e-cat
+- **八根胡须** —— 八个框架适配层：形状一致、位置固定，数一数就知道装了哪些
+- **圆滚滚的身体** —— 框架无关内核：不认框架，只认令牌
+- **爪子里举着的小钥匙** —— JWT 令牌与签名，Kee 的老本行
+- **颈圈上的蓝盾** —— 校验与黑名单：验签通过、未被拉黑才放行
 
 形象文件 `docs/pet.svg` 是纯矢量、无脚本、无外部依赖的单个文件，动画使用 SMIL 实现，可直接嵌入任何页面或文档，也被 `mascot::svg()` 用 `include_str!` 编译期内嵌进 crate。
 
@@ -840,9 +838,17 @@ print!("{}", mascot::banner(None));
 
 // 矢量形象：同样的形象可以直接输出给浏览器或写进视图
 let svg: &'static str = mascot::svg();
+
+// 12 种表情形态：笑 / 欢乐 / 哭 / 沮丧 / 惊恐 / 愤怒 / 撒娇 / 卖萌 / 讨好 / 敲打 / 捂脸 / 吐舌头
+let smile: &'static str = mascot::Expression::Smile.svg();
+
+// 遍历全部形态
+for e in mascot::Expression::ALL {
+    println!("{} ({}) {} bytes", e.name(), e.cn_name(), e.svg().len());
+}
 ```
 
-可运行示例（打印横幅与 svg 字节数）：
+可运行示例（打印横幅、主形象与 12 种表情的字节数）：
 
 ```sh
 cargo run --example mascot
@@ -852,10 +858,13 @@ cargo run --example mascot
 <!-- pet-expressions:start -->
 ## 项目宠物表情形态 · 钥匙小卫 Kee
 
-<table align="center">
-<tr><td align="center"><img src="docs/pet-expressions/smile.svg" width="88" alt="笑"><br><b>笑</b><br><code>:emoji-smile:</code></td><td align="center"><img src="docs/pet-expressions/joy.svg" width="88" alt="欢乐"><br><b>欢乐</b><br><code>:emoji-joy:</code></td><td align="center"><img src="docs/pet-expressions/cry.svg" width="88" alt="哭"><br><b>哭</b><br><code>:emoji-cry:</code></td><td align="center"><img src="docs/pet-expressions/depressed.svg" width="88" alt="沮丧"><br><b>沮丧</b><br><code>:emoji-depressed:</code></td><td align="center"><img src="docs/pet-expressions/terrified.svg" width="88" alt="惊恐"><br><b>惊恐</b><br><code>:emoji-terrified:</code></td><td align="center"><img src="docs/pet-expressions/angry.svg" width="88" alt="愤怒"><br><b>愤怒</b><br><code>:emoji-angry:</code></td></tr>
-<tr><td align="center"><img src="docs/pet-expressions/coquettish.svg" width="88" alt="撒娇"><br><b>撒娇</b><br><code>:emoji-coquettish:</code></td><td align="center"><img src="docs/pet-expressions/cute.svg" width="88" alt="卖萌"><br><b>卖萌</b><br><code>:emoji-cute:</code></td><td align="center"><img src="docs/pet-expressions/pleasing.svg" width="88" alt="讨好"><br><b>讨好</b><br><code>:emoji-pleasing:</code></td><td align="center"><img src="docs/pet-expressions/knocking.svg" width="88" alt="敲打"><br><b>敲打</b><br><code>:emoji-knocking:</code></td><td align="center"><img src="docs/pet-expressions/facepalm.svg" width="88" alt="捂脸"><br><b>捂脸</b><br><code>:emoji-facepalm:</code></td><td align="center"><img src="docs/pet-expressions/tongue.svg" width="88" alt="吐舌头"><br><b>吐舌头</b><br><code>:emoji-tongue:</code></td></tr>
-</table>
+| **笑** `:emoji-smile:` | **欢乐** `:emoji-joy:` | **哭** `:emoji-cry:` | **沮丧** `:emoji-depressed:` | **惊恐** `:emoji-terrified:` | **愤怒** `:emoji-angry:` |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| ![笑](./docs/pet-expressions/smile.svg) | ![欢乐](./docs/pet-expressions/joy.svg) | ![哭](./docs/pet-expressions/cry.svg) | ![沮丧](./docs/pet-expressions/depressed.svg) | ![惊恐](./docs/pet-expressions/terrified.svg) | ![愤怒](./docs/pet-expressions/angry.svg) |
+
+| **撒娇** `:emoji-coquettish:` | **卖萌** `:emoji-cute:` | **讨好** `:emoji-pleasing:` | **敲打** `:emoji-knocking:` | **捂脸** `:emoji-facepalm:` | **吐舌头** `:emoji-tongue:` |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| ![撒娇](./docs/pet-expressions/coquettish.svg) | ![卖萌](./docs/pet-expressions/cute.svg) | ![讨好](./docs/pet-expressions/pleasing.svg) | ![敲打](./docs/pet-expressions/knocking.svg) | ![捂脸](./docs/pet-expressions/facepalm.svg) | ![吐舌头](./docs/pet-expressions/tongue.svg) |
 
 > 12 种彩色动态形态：笑 / 欢乐 / 哭 / 沮丧 / 惊恐 / 愤怒 / 撒娇 / 卖萌 / 讨好 / 敲打 / 捂脸 / 吐舌头。每个 SVG 自带表情、情绪特效与整体动效，并遵循 `prefers-reduced-motion`。
 <!-- pet-expressions:end -->
@@ -876,7 +885,7 @@ SVG / PNG）**不是开源资产**，版权归作者所有。未经书面许可�
 
 | 微信 WeChat | 支付宝 Alipay |
 |:---:|:---:|
-| <img src="./docs/weixinpay.png" width="130" height="130" alt="微信 WeChat"> | <img src="./docs/alipay.png" width="130" height="130" alt="支付宝 Alipay"> |
+| ![微信 WeChat](./docs/weixinpay.png) | ![支付宝 Alipay](./docs/alipay.png) |
 
 ---
 
