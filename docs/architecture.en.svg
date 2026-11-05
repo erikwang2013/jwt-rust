@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="912" viewBox="0 0 960 912" role="img" aria-labelledby="archTitle archDesc"
-     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif">
+     font-family="'Source Han Sans SC', 'Noto Sans SC', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', 'DejaVu Sans', sans-serif">
   <title id="archTitle">erikwang2013/jwt-rust Architecture Design</title>
   <desc id="archDesc">Four-layer architecture: integration layer (plain Rust Guard plus axum / actix-web / rocket / poem / salvo / warp / bee-rust / e-cat framework adapters), framework-agnostic core layer (Jwt / JwtFactory / JwtAuth / support components), pluggable storage layer (TokenStorage trait + RetryTokenStorage decorator + redis / database / file / memcached drivers), and base dependencies (jsonwebtoken and log).</desc>
   <defs>

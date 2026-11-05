@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="730" viewBox="0 0 960 730" role="img" aria-labelledby="lifeTitle lifeDesc"
-     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif">
+     font-family="'Source Han Sans SC', 'Noto Sans SC', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', 'DejaVu Sans', sans-serif">
   <title id="lifeTitle">erikwang2013/jwt-rust 令牌生命周期</title>
   <desc id="lifeDesc">令牌从签发、下发、校验、放行、刷新、拉黑到过期清理的七个阶段，以及 Active → In Use → Refreshed / Blacklisted → Expired → Cleaned 的状态流转。</desc>
   <defs>

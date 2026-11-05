@@ -179,13 +179,14 @@ fn route_index(key: &str, n: usize) -> usize {
 impl TokenStorage for MemcachedTokenStorage {
     fn blacklist(&self, jti: &str, expire_time: i64) -> Result<bool, JwtError> {
         let now = crate::jwt::now();
-        let mut ttl = expire_time - now;
+        // 饱和运算：exp 来自外部令牌（i64 极值），裸减法/加法在 debug 构建会 panic
+        let mut ttl = expire_time.saturating_sub(now);
         if ttl <= 0 {
             return Ok(true);
         }
         // Memcached 协议：>2592000(30 天) 的 TTL 被当作绝对 Unix 时间戳
         if ttl > 2_592_000 {
-            ttl += now;
+            ttl = ttl.saturating_add(now);
         }
         // 钳到 u32::MAX：极端 ttl（2106 年后）直接 `as u32` 会回绕成过去时间而立即过期
         let ttl = ttl.min(u32::MAX as i64) as u32;
@@ -303,6 +304,10 @@ mod tests {
             .unwrap();
         let t0 = std::time::Instant::now();
         assert!(!s.is_available());
+        // 极端 exp（外部令牌可携带 i64 极值）不得让 TTL 运算溢出 panic
+        assert!(s.blacklist("x", i64::MIN).unwrap());
+        let e = s.blacklist("x", i64::MAX).unwrap_err();
+        assert!(matches!(e, JwtError::Storage(_)), "got {e:?}");
         let e = s.blacklist("x", crate::jwt::now() + 60).unwrap_err();
         assert!(matches!(e, JwtError::Storage(_)), "got {e:?}");
         assert!(e.to_string().contains("none of the"), "got {e}");

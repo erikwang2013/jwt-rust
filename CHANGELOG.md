@@ -2,6 +2,22 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.4] - 2026-11-05
+
+### Security
+
+- 依赖安全更新：`zstd` / `zstd-safe` / `zstd-sys`、`tokio`、`rustls` / `rustls-webpki` / `webpki-roots` / `webpki-root-certs` 升级到修复版本；`cargo audit` 无漏洞
+
+### Fixed
+
+- `redis` / `memcached` 驱动在外部令牌 `exp` 为 `i64` 极值时 TTL 计算溢出 panic（debug 构建）：改用饱和运算，并补回归断言
+
+### Changed
+
+- 文档 SVG 字体族全部改为开源字体（Source Han Sans SC / Noto Sans SC / WenQuanYi Micro Hei / DejaVu Sans），不再引用商业字体；同步重绘社交预览图
+- 清理 `ASSETS-LICENSE.md` 中不存在的第三方素材/字体文件引用
+- 仓库清理：移除本地 AI 工具生成的无效文件（不进入 crate 包，不影响 API）
+
 ## [1.0.3] - 2026-10-19
 
 ### Added

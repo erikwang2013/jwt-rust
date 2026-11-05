@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="spTitle spDesc" shape-rendering="geometricPrecision"
-     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans SC', 'Noto Sans CJK SC', sans-serif">
+     font-family="'Source Han Sans SC', 'Noto Sans SC', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', 'DejaVu Sans', sans-serif">
   <title id="spTitle">jwt-rust 社交预览图：钥匙小卫 Kee（卡通橘猫）</title>
   <desc id="spDesc">jwt-rust —— 面向 Rust 的框架无关 JWT 插件：一套内核、九种接入、四种黑名单存储，适配 axum、actix-web、rocket、poem、salvo、warp、bee-rust、e-cat。画面右侧是吉祥物 Kee：一只举着钥匙的卡通橘猫。</desc>
   <defs>

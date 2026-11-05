@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" role="img" aria-labelledby="featTitle featDesc"
-     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif">
+     font-family="'Source Han Sans SC', 'Noto Sans SC', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', 'DejaVu Sans', sans-serif">
   <title id="featTitle">erikwang2013/jwt-rust 功能设计</title>
   <desc id="featDesc">六大功能域：令牌签发、令牌校验、令牌刷新、黑名单存储、高可用与框架集成。</desc>
 

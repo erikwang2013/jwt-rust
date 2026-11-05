@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="912" viewBox="0 0 960 912" role="img" aria-labelledby="archTitle archDesc"
-     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif">
+     font-family="'Source Han Sans SC', 'Noto Sans SC', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', 'DejaVu Sans', sans-serif">
   <title id="archTitle">erikwang2013/jwt-rust 架构设计</title>
   <desc id="archDesc">四层架构：接入层（原生 Rust Guard 与 axum / actix-web / rocket / poem / salvo / warp / bee-rust / e-cat 八框架适配）、框架无关核心层（Jwt / JwtFactory / JwtAuth / 支撑组件）、可插拔存储层（TokenStorage trait + RetryTokenStorage 装饰器 + redis / database / file / memcached 四驱动）、底层依赖（jsonwebtoken 与 log 日志）。</desc>
   <defs>

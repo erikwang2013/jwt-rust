@@ -97,7 +97,8 @@ impl RedisTokenStorage {
 
 impl TokenStorage for RedisTokenStorage {
     fn blacklist(&self, jti: &str, expire_time: i64) -> Result<bool, JwtError> {
-        let ttl = expire_time - crate::jwt::now();
+        // 饱和减法：exp 来自外部令牌（i64 极值），裸减法在 debug 构建会 panic
+        let ttl = expire_time.saturating_sub(crate::jwt::now());
         if ttl <= 0 {
             return Ok(true);
         }
@@ -173,6 +174,8 @@ mod tests {
             RedisTokenStorage::new(Some("127.0.0.1:1".into()), "jwt_rust_test:".into()).unwrap();
         let t0 = std::time::Instant::now();
         assert!(!s.is_available());
+        // 极端 exp（外部令牌可携带 i64 极值）不得让 TTL 运算溢出 panic
+        assert!(s.blacklist("x", i64::MIN).unwrap());
         for _ in 0..2 {
             // 第二次证明可重试、不卡死
             let e = s.blacklist("x", now_secs() + 60).unwrap_err();

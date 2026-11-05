@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="730" viewBox="0 0 960 730" role="img" aria-labelledby="lifeTitle lifeDesc"
-     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif">
+     font-family="'Source Han Sans SC', 'Noto Sans SC', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', 'DejaVu Sans', sans-serif">
   <title id="lifeTitle">erikwang2013/jwt-rust Token Lifecycle</title>
   <desc id="lifeDesc">Seven stages from issuance, delivery, validation, allow / deny, refresh, blacklist to expiry cleanup, plus the state flow Active → In Use → Refreshed / Blacklisted → Expired → Cleaned.</desc>
   <defs>

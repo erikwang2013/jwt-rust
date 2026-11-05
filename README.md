@@ -877,7 +877,7 @@ SVG / PNG）**不是开源资产**，版权归作者所有。未经书面许可�
 用于商业用途；商业使用需取得商业授权，联系 **erik@erik.xyz**。详见
 [ASSETS-LICENSE.md](ASSETS-LICENSE.md)。
 
-> 代码部分仍遵循仓库原有 `LICENSE`；第三方素材（如明确标注的 Go Gopher 等）仍遵循其原许可证。
+> 代码部分仍遵循仓库原有 `LICENSE`；SVG 仅使用开源字体（Source Han Sans SC / Noto Sans SC / WenQuanYi Micro Hei / DejaVu Sans）或通用 `sans-serif`。
 <!-- assets-license:end -->
 
 
