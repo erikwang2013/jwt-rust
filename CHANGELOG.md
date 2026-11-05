@@ -2,6 +2,12 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.5] - 2026-11-05
+
+### Fixed
+
+- MSRV 1.88：`memcached` feature 经 r2d2 解析到 `scheduled-thread-pool 0.2.8`（其依赖 `parking_lot 0.13` 要求 Rust 1.95），导致 CI 的 MSRV 任务失败；显式锁定 `scheduled-thread-pool 0.2.7`，恢复 1.88 兼容
+
 ## [1.0.4] - 2026-11-05
 
 ### Security

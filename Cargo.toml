@@ -1,6 +1,6 @@
 [package]
 name = "jwt-rust"
-version = "1.0.4"
+version = "1.0.5"
 edition = "2024"
 rust-version = "1.88"
 description = "A framework-agnostic JWT plugin for plain Rust and axum, actix-web, rocket, poem, salvo, warp, bee-rust, e-cat: one core, a request guard or eight native adapters, pluggable blacklist storage (redis / database / file / memcached)."
@@ -16,6 +16,10 @@ exclude = ["/.agents", "/.claude", "/.claude-flow", "/.codex", "/.swarm", "/ruve
 [package.metadata.docs.rs]
 all-features = true
 
+# scheduled-thread-pool 是 MSRV 版本钉（见依赖注释），代码不直接引用
+[package.metadata.cargo-machete]
+ignored = ["scheduled-thread-pool"]
+
 [dependencies]
 actix-web = { version = "4.15.0", optional = true }
 axum = { version = "0.8.9", optional = true }
@@ -25,6 +29,9 @@ getrandom = "0.4.3"
 jsonwebtoken = { version = "11.1.0", features = ["aws_lc_rs"] }
 log = "0.4.34"
 memcache = { version = "0.21.0", optional = true }
+# MSRV 1.88：r2d2 的 "0.2" 范围会解析到 scheduled-thread-pool 0.2.8
+# （其依赖 parking_lot 0.13 要求 Rust 1.95）。显式锁 0.2.7 保住 MSRV。
+scheduled-thread-pool = { version = "=0.2.7", optional = true }
 poem = { version = "3.1.12", optional = true }
 # default-features=false：默认 feature（acl/streams/geospatial/script/num-bigint）本库全部用不到，
 # 只影响编译量/依赖图（SETEX/EXISTS/PING/TTL 等核心命令不受 feature 门控）
@@ -46,7 +53,7 @@ warp = { version = "0.4.3", optional = true }
 default = []
 redis = ["dep:redis"]
 database = ["dep:rusqlite"]
-memcached = ["dep:memcache"]
+memcached = ["dep:memcache", "dep:scheduled-thread-pool"]
 axum = ["dep:axum", "dep:tower"]
 actix = ["dep:actix-web"]
 rocket = ["dep:rocket"]
