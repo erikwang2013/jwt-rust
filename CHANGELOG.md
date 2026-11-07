@@ -2,6 +2,12 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.6] - 2026-11-07
+
+### Changed
+
+- `Cargo.toml` 的 `homepage` 更新为 https://package.erik.xyz/jwt
+
 ## [1.0.5] - 2026-11-05
 
 ### Fixed
